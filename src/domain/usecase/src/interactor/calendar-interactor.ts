@@ -5,6 +5,11 @@ import {
   type StoreCalendar,
 } from "@omische/model";
 import type { CalendarGateway } from "../gateway/calendar-gateway";
+export type SubstituteClosureWarning = Readonly<{
+  date: string;
+  holidayName: string;
+  message: string;
+}>;
 export class CalendarInteractor {
   public constructor(private readonly gateway: CalendarGateway) {}
   public load(): StoreCalendar {
@@ -59,5 +64,49 @@ export class CalendarInteractor {
       month,
       this.gateway.holidays(year),
     );
+  }
+  public substituteClosureWarnings(
+    calendar: StoreCalendar,
+    from: Date,
+    monthsAhead = 11,
+  ): readonly SubstituteClosureWarning[] {
+    if (calendar.rules.substituteClosure !== "next-day") return [];
+    const toIsoDate = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const startDate = toIsoDate(from);
+    const endMonth = new Date(
+      from.getFullYear(),
+      from.getMonth() + monthsAhead,
+      1,
+    );
+    const endDay = Math.min(
+      from.getDate(),
+      new Date(endMonth.getFullYear(), endMonth.getMonth() + 1, 0).getDate(),
+    );
+    const endDate = toIsoDate(
+      new Date(endMonth.getFullYear(), endMonth.getMonth(), endDay),
+    );
+    const warnings: SubstituteClosureWarning[] = [];
+    for (let offset = 0; offset <= monthsAhead; offset += 1) {
+      const target = new Date(from.getFullYear(), from.getMonth() + offset, 1);
+      for (const day of this.month(
+        calendar,
+        target.getFullYear(),
+        target.getMonth() + 1,
+      )) {
+        if (
+          day.date >= startDate &&
+          day.date <= endDate &&
+          day.kind === "substitute-closed" &&
+          day.holidayName
+        )
+          warnings.push({
+            date: day.date,
+            holidayName: day.holidayName,
+            message: `${day.holidayName}ですが、前日の特別営業による振替休業になります。`,
+          });
+      }
+    }
+    return warnings;
   }
 }

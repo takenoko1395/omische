@@ -6,6 +6,7 @@ import type {
   StoreCalendar,
   Weekday,
 } from "@omische/model";
+import type { SubstituteClosureWarning } from "@omische/usecase";
 import { useCalendar } from "../providers/calendar-provider";
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 const now = new Date();
@@ -24,6 +25,10 @@ export function CalendarPage() {
   const days = useMemo(
     () => interactor.month(calendar, month.getFullYear(), month.getMonth() + 1),
     [calendar, interactor, month],
+  );
+  const substituteWarnings = useMemo(
+    () => interactor.substituteClosureWarnings(calendar, now),
+    [calendar, interactor],
   );
   const moveMonth = (offset: number) =>
     setMonth(new Date(month.getFullYear(), month.getMonth() + offset, 1));
@@ -57,6 +62,7 @@ export function CalendarPage() {
               calendar={calendar}
               update={update}
               setExceptionRange={setExceptionRange}
+              substituteWarnings={substituteWarnings}
               restart={() => {
                 setStep(0);
                 setWizard(true);
@@ -384,6 +390,7 @@ function Settings({
   update,
   restart,
   setExceptionRange,
+  substituteWarnings,
 }: {
   calendar: StoreCalendar;
   update: (v: StoreCalendar) => void;
@@ -393,6 +400,7 @@ function Settings({
     start: string,
     end: string,
   ) => void;
+  substituteWarnings: readonly SubstituteClosureWarning[];
 }) {
   const [exceptionStart, setExceptionStart] = useState<IsoDate | "">("");
   const [exceptionEnd, setExceptionEnd] = useState<IsoDate | "">("");
@@ -445,6 +453,22 @@ function Settings({
           }
         />
       </details>
+      {substituteWarnings.length > 0 && (
+        <aside className="rule-warnings" aria-labelledby="rule-warning-title">
+          <strong id="rule-warning-title">このお休みで大丈夫ですか？</strong>
+          <p>
+            「翌日だけ自動でお休み」の設定により、今月から11カ月後までに祝日を休業にする日があります。
+          </p>
+          <ul>
+            {substituteWarnings.map((warning) => (
+              <li key={warning.date}>
+                <time dateTime={warning.date}>{warning.date}</time>
+                {warning.message}
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
       <label>
         注記
         <input

@@ -10,8 +10,13 @@ class MemoryGateway implements CalendarGateway {
   public save(calendar: StoreCalendar) {
     this.saved = calendar;
   }
-  public holidays() {
-    return new Map();
+  public holidays(year: number) {
+    return year === 2026
+      ? new Map([
+          ["2026-09-21" as const, "敬老の日"],
+          ["2026-09-22" as const, "国民の休日"],
+        ])
+      : new Map();
   }
 }
 
@@ -39,5 +44,40 @@ describe("CalendarInteractor.setExceptionRange", () => {
     ]);
     expect(result.rules.specialOpenDates).toEqual([]);
     expect(gateway.saved).toBe(result);
+  });
+});
+
+describe("CalendarInteractor.substituteClosureWarnings", () => {
+  it("自動振替休業が祝日と重なる日を11カ月後まで通知する", () => {
+    const interactor = new CalendarInteractor(new MemoryGateway());
+    const base = defaultStoreCalendar();
+    const calendar = {
+      ...base,
+      rules: {
+        ...base.rules,
+        weeklyClosures: [1 as const],
+        substituteClosure: "next-day" as const,
+      },
+    };
+
+    expect(
+      interactor.substituteClosureWarnings(calendar, new Date(2026, 7, 14)),
+    ).toEqual([
+      expect.objectContaining({
+        date: "2026-09-22",
+        holidayName: "国民の休日",
+      }),
+    ]);
+  });
+
+  it("手動で休業期間を決める場合は通知しない", () => {
+    const interactor = new CalendarInteractor(new MemoryGateway());
+
+    expect(
+      interactor.substituteClosureWarnings(
+        defaultStoreCalendar(),
+        new Date(2026, 7, 14),
+      ),
+    ).toEqual([]);
   });
 });
