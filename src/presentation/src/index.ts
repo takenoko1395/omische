@@ -1,6 +1,2 @@
-export { ItemListPage } from "./pages/item-list/item-list-page";
-export {
-  InteractorProvider,
-  useItemInteractor,
-} from "./providers/interactor-provider";
-export { useItems } from "./providers/use-items";
+export { CalendarPage } from "./pages/calendar-page";
+export { CalendarProvider } from "./providers/calendar-provider";

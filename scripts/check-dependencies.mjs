@@ -2,20 +2,20 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const allowedDependencies = new Map([
-  ["@template/model", new Set()],
-  ["@template/usecase", new Set(["@template/model"])],
+  ["@omische/model", new Set()],
+  ["@omische/usecase", new Set(["@omische/model"])],
   [
-    "@template/dummy-gateway",
-    new Set(["@template/model", "@template/usecase"]),
+    "@omische/browser-calendar",
+    new Set(["@omische/model", "@omische/usecase"]),
   ],
-  ["@template/presentation", new Set(["@template/model", "@template/usecase"])],
+  ["@omische/presentation", new Set(["@omische/model", "@omische/usecase"])],
   [
-    "@template/app",
+    "@omische/app",
     new Set([
-      "@template/model",
-      "@template/usecase",
-      "@template/dummy-gateway",
-      "@template/presentation",
+      "@omische/model",
+      "@omische/usecase",
+      "@omische/browser-calendar",
+      "@omische/presentation",
     ]),
   ],
 ]);
@@ -23,7 +23,7 @@ const allowedDependencies = new Map([
 const packageDirectories = [
   "src/domain/model",
   "src/domain/usecase",
-  "src/gateway/dummy-gateway",
+  "src/gateway/browser-calendar",
   "src/presentation",
   ".",
 ];
@@ -34,7 +34,7 @@ for (const directory of packageDirectories) {
     await readFile(resolve(directory, "package.json"), "utf8"),
   );
   const workspaceDependencies = Object.keys(manifest.dependencies ?? {}).filter(
-    (name) => name.startsWith("@template/"),
+    (name) => name.startsWith("@omische/"),
   );
   const allowed = allowedDependencies.get(manifest.name);
   for (const dependency of workspaceDependencies) {

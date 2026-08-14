@@ -4,7 +4,7 @@
     "composite": true,
     "rootDir": "src",
     "outDir": "dist",
-    "tsBuildInfoFile": "dist/dummy-gateway.tsbuildinfo"
+    "tsBuildInfoFile": "dist/browser-calendar.tsbuildinfo"
   },
   "references": [
     { "path": "../../domain/model" },

@@ -1,14 +1,10 @@
-import { InteractorProvider, ItemListPage } from "@template/presentation";
-
-import { buildItemInteractor } from "./wire/interactor-factory";
-
-const itemInteractor = buildItemInteractor();
-
-/** InteractorをPresentationへ注入し、テンプレート一覧を表示します。 */
+import { CalendarPage, CalendarProvider } from "@omische/presentation";
+import { buildCalendarInteractor } from "./wire/interactor-factory";
+const interactor = buildCalendarInteractor();
 export function App() {
   return (
-    <InteractorProvider itemInteractor={itemInteractor}>
-      <ItemListPage />
-    </InteractorProvider>
+    <CalendarProvider interactor={interactor}>
+      <CalendarPage />
+    </CalendarProvider>
   );
 }
