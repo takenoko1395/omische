@@ -45,6 +45,25 @@ make check
 make dev
 ```
 
+初回セットアップでは、Node.jsとnpmのバージョン確認、依存関係の固定インストール、
+一括検証をまとめて実行できます。
+
+```sh
+make setup
+```
+
+コンテナや開発環境の初期化スクリプトをカスタマイズできる場合は、RepositoryをCheckout
+したあとに次のコマンドを実行するよう設定してください。
+
+```sh
+./scripts/setup-development.sh
+```
+
+このスクリプトはNode.js 24、npm 11を確認してから`npm ci`と`npm run check`を実行します。
+Node.js自体のインストールは環境ごとに異なるため、`.node-version`を参照できる
+バージョン管理ツールやコンテナイメージ側で用意してください。日常の開発では変更前後に
+`npm run check`を実行し、CIはその結果を独立した環境でもう一度確認します。
+
 Windowsなどmakeがない環境では、対応する`npm run`コマンドを直接実行できます。
 
 ## 主なコマンド
@@ -58,6 +77,13 @@ Windowsなどmakeがない環境では、対応する`npm run`コマンドを直
 - `make check`: format、lint、依存方向、型、テストを一括検査
 
 詳細な規約は`docs/development/coding_rules.md`を参照してください。
+
+## 継続的インテグレーション
+
+Pull Request、および`main`または`master`へのPushでは`.github/workflows/ci.yml`が動作し、
+`npm ci`、format、lint、依存関係検査、typecheck、test、Production buildを実行します。
+ローカル検証は素早いフィードバックのため、CIは環境差や検証漏れを防ぐために、両方を
+実行する方針です。Branch protectionを利用する場合は、CIの`check` jobを必須にします。
 
 ## Pull RequestのGitHub Pages公開
 
