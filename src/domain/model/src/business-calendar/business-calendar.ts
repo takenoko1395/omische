@@ -62,7 +62,7 @@ export const defaultStoreCalendar = (): StoreCalendar => ({
     ordinalClosures: [],
     holidays: "open",
     regularClosureOnHoliday: "open",
-    substituteClosure: "next-day",
+    substituteClosure: "none",
     specialOpenDates: [],
     specialClosedDates: [],
   },

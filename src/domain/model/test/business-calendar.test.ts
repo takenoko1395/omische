@@ -3,12 +3,23 @@ import { buildBusinessMonth, defaultStoreCalendar, type IsoDate } from "../src";
 describe("buildBusinessMonth", () => {
   it("祝日営業の翌日を振替休業にする", () => {
     const holidays = new Map<IsoDate, string>([["2026-09-21", "敬老の日"]]);
-    const days = buildBusinessMonth(defaultStoreCalendar(), 2026, 9, holidays);
+    const base = defaultStoreCalendar();
+    const calendar = {
+      ...base,
+      rules: { ...base.rules, substituteClosure: "next-day" as const },
+    };
+    const days = buildBusinessMonth(calendar, 2026, 9, holidays);
     expect(days[20]).toMatchObject({ isOpen: true, kind: "open" });
     expect(days[21]).toMatchObject({
       isOpen: false,
       kind: "substitute-closed",
     });
+  });
+  it("振替休業を自分で設定する場合は翌日を自動で休業にしない", () => {
+    const holidays = new Map<IsoDate, string>([["2026-09-21", "敬老の日"]]);
+    const days = buildBusinessMonth(defaultStoreCalendar(), 2026, 9, holidays);
+
+    expect(days[21]).toMatchObject({ isOpen: true, kind: "open" });
   });
   it("個別指定を最優先する", () => {
     const base = defaultStoreCalendar();
