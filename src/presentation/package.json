@@ -1,0 +1,23 @@
+{
+  "name": "@template/presentation",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@template/model": "0.1.0",
+    "@template/usecase": "0.1.0"
+  },
+  "peerDependencies": {
+    "react": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0"
+  }
+}

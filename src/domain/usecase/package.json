@@ -1,0 +1,16 @@
+{
+  "name": "@template/usecase",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@template/model": "0.1.0"
+  }
+}

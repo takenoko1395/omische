@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "jsx": "react-jsx",
+    "rootDir": ".",
+    "outDir": "dist/types",
+    "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "dist/types/app.tsbuildinfo"
+  },
+  "references": [
+    { "path": "src/domain/model" },
+    { "path": "src/domain/usecase" },
+    { "path": "src/gateway/dummy-gateway" },
+    { "path": "src/presentation" }
+  ],
+  "include": [
+    "src/app.tsx",
+    "src/main.tsx",
+    "src/vite-env.d.ts",
+    "src/wire",
+    "vite.config.ts"
+  ]
+}
