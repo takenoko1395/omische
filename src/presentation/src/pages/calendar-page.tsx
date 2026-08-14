@@ -182,13 +182,17 @@ function Wizard({
       )}
       {step === 4 && (
         <>
-          <h1>祝日は営業しますか？</h1>
-          <p>定休日ではない祝日の営業について選びます。</p>
+          <h1>
+            ふだんの営業日が
+            <br />
+            祝日なら？
+          </h1>
+          <p>例：ふだん営業する火曜日が、祝日だった場合について選びます。</p>
           <Choice
             selected={calendar.rules.holidays}
             options={[
-              ["open", "営業する"],
-              ["closed", "お休みする"],
+              ["open", "祝日も営業する"],
+              ["closed", "祝日はお休みする"],
             ]}
             onChange={(v) =>
               update(
@@ -201,15 +205,18 @@ function Wizard({
       {step === 5 && (
         <>
           <h1>
-            定休日が祝日なら
+            いつもの定休日が
             <br />
-            どうしますか？
+            祝日なら？
           </h1>
+          <p>
+            例：毎週月曜日がお休みで、その月曜日が祝日だった場合について選びます。
+          </p>
           <Choice
             selected={calendar.rules.regularClosureOnHoliday}
             options={[
-              ["open", "祝日なので営業する"],
-              ["closed", "そのまま休む"],
+              ["open", "祝日だけ特別に営業する"],
+              ["closed", "定休日どおりお休みする"],
             ]}
             onChange={(v) =>
               update(
@@ -224,15 +231,16 @@ function Wizard({
       {step === 6 && (
         <>
           <h1>
-            祝日営業の翌日は
+            定休日に特別営業したら
             <br />
-            お休みにしますか？
+            翌日はお休みにする？
           </h1>
+          <p>ひとつ前の質問で「特別に営業する」を選んだ場合の設定です。</p>
           <Choice
             selected={calendar.rules.substituteClosure}
             options={[
-              ["next-day", "翌日を振替休業にする"],
-              ["none", "振替休業はなし"],
+              ["next-day", "翌日を振替でお休みにする"],
+              ["none", "振替のお休みは作らない"],
             ]}
             onChange={(v) =>
               update(
