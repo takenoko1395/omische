@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, forwardRef } from "react";
 import type {
   CalendarDay,
+  BusinessHours,
   IsoDate,
   StoreCalendar,
   Weekday,
@@ -13,7 +14,7 @@ const updateRules = (
   changes: Partial<StoreCalendar["rules"]>,
 ): StoreCalendar => ({ ...calendar, rules: { ...calendar.rules, ...changes } });
 export function CalendarPage() {
-  const { calendar, update, interactor } = useCalendar();
+  const { calendar, update, interactor, setExceptionRange } = useCalendar();
   const [month, setMonth] = useState(
     new Date(now.getFullYear(), now.getMonth(), 1),
   );
@@ -55,6 +56,7 @@ export function CalendarPage() {
             <Settings
               calendar={calendar}
               update={update}
+              setExceptionRange={setExceptionRange}
               restart={() => {
                 setStep(0);
                 setWizard(true);
@@ -94,12 +96,13 @@ function Wizard({
   setStep: (v: number) => void;
   finish: () => void;
 }) {
-  const next = () => (step === 4 ? finish() : setStep(step + 1));
+  const lastStep = 6;
+  const next = () => (step === lastStep ? finish() : setStep(step + 1));
   return (
     <div className="wizard">
-      <p className="eyebrow">はじめの設定 · {step + 1} / 5</p>
+      <p className="eyebrow">はじめの設定 · {step + 1} / 7</p>
       <div className="progress">
-        <i style={{ width: `${(step + 1) * 20}%` }} />
+        <i style={{ width: `${((step + 1) / 7) * 100}%` }} />
       </div>
       {step === 0 && (
         <>
@@ -117,6 +120,35 @@ function Wizard({
         </>
       )}
       {step === 1 && (
+        <ScheduleQuestion
+          title="平日の営業時間を教えてください"
+          description="月〜金の営業日について設定します。"
+          value={calendar.businessHours.weekday}
+          onChange={(value) =>
+            update({
+              ...calendar,
+              businessHours: { ...calendar.businessHours, weekday: value },
+            })
+          }
+        />
+      )}
+      {step === 2 && (
+        <ScheduleQuestion
+          title="土日・祝日の営業時間は？"
+          description="平日と同じ時間でも、そのまま次へ進めます。"
+          value={calendar.businessHours.weekendHoliday}
+          onChange={(value) =>
+            update({
+              ...calendar,
+              businessHours: {
+                ...calendar.businessHours,
+                weekendHoliday: value,
+              },
+            })
+          }
+        />
+      )}
+      {step === 3 && (
         <>
           <h1>
             毎週のお休みは
@@ -148,7 +180,7 @@ function Wizard({
           </div>
         </>
       )}
-      {step === 2 && (
+      {step === 4 && (
         <>
           <h1>祝日は営業しますか？</h1>
           <p>定休日ではない祝日の営業について選びます。</p>
@@ -166,7 +198,7 @@ function Wizard({
           />
         </>
       )}
-      {step === 3 && (
+      {step === 5 && (
         <>
           <h1>
             定休日が祝日なら
@@ -189,7 +221,7 @@ function Wizard({
           />
         </>
       )}
-      {step === 4 && (
+      {step === 6 && (
         <>
           <h1>
             祝日営業の翌日は
@@ -219,9 +251,97 @@ function Wizard({
           </button>
         )}
         <button className="next" onClick={next}>
-          {step === 4 ? "設定を完成する" : "次へ"}
+          {step === lastStep ? "設定を完成する" : "次へ"}
         </button>
       </div>
+    </div>
+  );
+}
+function ScheduleQuestion({
+  title,
+  description,
+  value,
+  onChange,
+}: {
+  title: string;
+  description?: string;
+  value: BusinessHours;
+  onChange: (value: BusinessHours) => void;
+}) {
+  const hasBreak = value.breakTime !== undefined;
+  const breakTime = value.breakTime;
+  return (
+    <div className="schedule-question">
+      {title && <h1>{title}</h1>}
+      {description && <p>{description}</p>}
+      <div className="time-row">
+        <label>
+          開店
+          <input
+            type="time"
+            value={value.open}
+            onChange={(event) =>
+              onChange({ ...value, open: event.target.value })
+            }
+          />
+        </label>
+        <span>〜</span>
+        <label>
+          閉店
+          <input
+            type="time"
+            value={value.close}
+            onChange={(event) =>
+              onChange({ ...value, close: event.target.value })
+            }
+          />
+        </label>
+      </div>
+      <label className="break-toggle">
+        <input
+          type="checkbox"
+          checked={hasBreak}
+          onChange={(event) =>
+            onChange(
+              event.target.checked
+                ? { ...value, breakTime: { start: "14:00", end: "15:00" } }
+                : { open: value.open, close: value.close },
+            )
+          }
+        />
+        中休憩がある
+      </label>
+      {breakTime && (
+        <div className="time-row break-row">
+          <label>
+            休憩開始
+            <input
+              type="time"
+              value={breakTime.start}
+              onChange={(event) =>
+                onChange({
+                  ...value,
+                  breakTime: { ...breakTime, start: event.target.value },
+                })
+              }
+            />
+          </label>
+          <span>〜</span>
+          <label>
+            休憩終了
+            <input
+              type="time"
+              value={breakTime.end}
+              onChange={(event) =>
+                onChange({
+                  ...value,
+                  breakTime: { ...breakTime, end: event.target.value },
+                })
+              }
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }
@@ -253,30 +373,24 @@ function Settings({
   calendar,
   update,
   restart,
+  setExceptionRange,
 }: {
   calendar: StoreCalendar;
   update: (v: StoreCalendar) => void;
   restart: () => void;
+  setExceptionRange: (
+    kind: "open" | "closed",
+    start: string,
+    end: string,
+  ) => void;
 }) {
-  const [exception, setException] = useState<IsoDate | "">("");
+  const [exceptionStart, setExceptionStart] = useState<IsoDate | "">("");
+  const [exceptionEnd, setExceptionEnd] = useState<IsoDate | "">("");
   const addException = (kind: "open" | "closed") => {
-    if (!exception) return;
-    update(
-      updateRules(
-        calendar,
-        kind === "open"
-          ? {
-              specialOpenDates: [...calendar.rules.specialOpenDates, exception],
-            }
-          : {
-              specialClosedDates: [
-                ...calendar.rules.specialClosedDates,
-                exception,
-              ],
-            },
-      ),
-    );
-    setException("");
+    if (!exceptionStart || !exceptionEnd) return;
+    setExceptionRange(kind, exceptionStart, exceptionEnd);
+    setExceptionStart("");
+    setExceptionEnd("");
   };
   return (
     <div className="settings">
@@ -293,15 +407,34 @@ function Settings({
           onChange={(e) => update({ ...calendar, storeName: e.target.value })}
         />
       </label>
-      <label>
-        営業時間
-        <input
-          value={calendar.businessHours}
-          onChange={(e) =>
-            update({ ...calendar, businessHours: e.target.value })
+      <details className="schedule-details">
+        <summary>営業時間を変更</summary>
+        <h2>平日</h2>
+        <ScheduleQuestion
+          title=""
+          value={calendar.businessHours.weekday}
+          onChange={(value) =>
+            update({
+              ...calendar,
+              businessHours: { ...calendar.businessHours, weekday: value },
+            })
           }
         />
-      </label>
+        <h2>土日・祝日</h2>
+        <ScheduleQuestion
+          title=""
+          value={calendar.businessHours.weekendHoliday}
+          onChange={(value) =>
+            update({
+              ...calendar,
+              businessHours: {
+                ...calendar.businessHours,
+                weekendHoliday: value,
+              },
+            })
+          }
+        />
+      </details>
       <label>
         注記
         <input
@@ -333,17 +466,29 @@ function Settings({
           onChange={(e) => update({ ...calendar, mainColor: e.target.value })}
         />
       </label>
-      <label>
-        臨時営業・休業
-        <input
-          type="date"
-          value={exception}
-          onChange={(e) => setException(e.target.value as IsoDate)}
-        />
-      </label>
+      <fieldset className="exception-range">
+        <legend>追加の営業日・休業日</legend>
+        <label>
+          開始日
+          <input
+            type="date"
+            value={exceptionStart}
+            onChange={(e) => setExceptionStart(e.target.value as IsoDate)}
+          />
+        </label>
+        <label>
+          終了日
+          <input
+            type="date"
+            min={exceptionStart}
+            value={exceptionEnd}
+            onChange={(e) => setExceptionEnd(e.target.value as IsoDate)}
+          />
+        </label>
+      </fieldset>
       <div className="exception-buttons">
-        <button onClick={() => addException("open")}>臨時営業に追加</button>
-        <button onClick={() => addException("closed")}>臨時休業に追加</button>
+        <button onClick={() => addException("open")}>営業日として追加</button>
+        <button onClick={() => addException("closed")}>休業日として追加</button>
       </div>
       <button className="restart" onClick={restart}>
         質問形式で設定し直す
@@ -380,10 +525,11 @@ const CalendarCard = forwardRef<
       {days.map((day) => (
         <button
           key={day.date}
-          className={`${day.isOpen ? "open" : "closed"} ${day.kind}`}
+          className={`${day.isOpen ? "open" : "closed"} ${day.kind} ${day.isHoliday ? "holiday" : ""}`}
           title={day.reason}
         >
           <span>{day.day}</span>
+          {day.isHoliday && <small>{day.holidayName}</small>}
           {!day.isOpen && <small>休</small>}
           {day.kind === "special-open" && <small>営</small>}
         </button>
@@ -404,7 +550,11 @@ const CalendarCard = forwardRef<
       </span>
     </div>
     <div className="card-footer">
-      <strong>{calendar.businessHours}</strong>
+      <strong>
+        平日 {formatBusinessHours(calendar.businessHours.weekday)}
+        <br />
+        土日祝 {formatBusinessHours(calendar.businessHours.weekendHoliday)}
+      </strong>
       <span>{calendar.note}</span>
     </div>
   </div>
@@ -455,11 +605,21 @@ function exportPng(
       c.fillText("休", x + 56, y + 72);
     }
   });
-  c.font = "26px sans-serif";
+  c.font = "20px sans-serif";
   c.fillStyle = "#29251f";
-  c.fillText(calendar.businessHours, 540, 1010);
+  c.fillText(
+    `平日 ${formatBusinessHours(calendar.businessHours.weekday)}　土日祝 ${formatBusinessHours(calendar.businessHours.weekendHoliday)}`,
+    540,
+    1010,
+  );
   const link = document.createElement("a");
   link.download = `business-calendar-${month.getFullYear()}-${month.getMonth() + 1}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
+}
+function formatBusinessHours(hours: BusinessHours) {
+  const base = `${hours.open}–${hours.close}`;
+  return hours.breakTime
+    ? `${base}（休 ${hours.breakTime.start}–${hours.breakTime.end}）`
+    : base;
 }

@@ -14,9 +14,17 @@ export type BusinessRules = Readonly<{
   specialOpenDates: readonly IsoDate[];
   specialClosedDates: readonly IsoDate[];
 }>;
+export type BusinessHours = Readonly<{
+  open: string;
+  close: string;
+  breakTime?: Readonly<{ start: string; end: string }>;
+}>;
 export type StoreCalendar = Readonly<{
   storeName: string;
-  businessHours: string;
+  businessHours: Readonly<{
+    weekday: BusinessHours;
+    weekendHoliday: BusinessHours;
+  }>;
   note: string;
   theme: CalendarTheme;
   mainColor: string;
@@ -42,7 +50,10 @@ export type CalendarDay = Readonly<{
 
 export const defaultStoreCalendar = (): StoreCalendar => ({
   storeName: "わたしのお店",
-  businessHours: "10:00 – 18:00",
+  businessHours: {
+    weekday: { open: "10:00", close: "18:00" },
+    weekendHoliday: { open: "10:00", close: "18:00" },
+  },
   note: "営業時間は変更になる場合があります",
   theme: "natural",
   mainColor: "#a55233",

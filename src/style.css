@@ -152,6 +152,31 @@ button.selected {
   margin-right: 14px;
   color: #a05238;
 }
+.time-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 10px;
+  margin-top: 24px;
+}
+.time-row label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.break-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  font-size: 13px;
+}
+.break-toggle input {
+  width: auto;
+  margin: 0;
+}
+.break-row {
+  margin-top: 12px;
+}
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -246,6 +271,10 @@ button.selected {
   color: var(--accent);
   font-size: 9px;
 }
+.calendar-grid button.holiday > span,
+.calendar-grid button.holiday > small:first-of-type {
+  color: #c43d3d;
+}
 .calendar-grid button.closed {
   background: color-mix(in srgb, var(--accent) 12%, white);
   color: var(--accent);
@@ -287,6 +316,23 @@ button.selected {
 .settings h1 {
   font-size: 30px;
 }
+.schedule-details {
+  border-block: 1px solid #e1d9ce;
+  padding: 12px 0;
+  margin: 14px 0;
+}
+.schedule-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.schedule-details h2 {
+  margin: 18px 0 -10px;
+  font-size: 13px;
+}
+.schedule-details .time-row {
+  margin-top: 12px;
+}
 .settings label {
   display: block;
   font-size: 12px;
@@ -300,6 +346,21 @@ button.selected {
 .settings input[type="color"] {
   height: 42px;
   padding: 5px;
+}
+.exception-range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  margin: 18px 0 8px;
+}
+.exception-range legend {
+  font-size: 12px;
+  font-weight: 600;
+}
+.exception-range label {
+  margin: 4px 0;
 }
 .exception-buttons {
   display: flex;
