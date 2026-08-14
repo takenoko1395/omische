@@ -7,7 +7,7 @@ import {
 import type { CalendarGateway } from "../gateway/calendar-gateway";
 export type SubstituteClosureWarning = Readonly<{
   date: string;
-  holidayName: string;
+  holidayNames: readonly string[];
   message: string;
 }>;
 export class CalendarInteractor {
@@ -98,12 +98,13 @@ export class CalendarInteractor {
           day.date >= startDate &&
           day.date <= endDate &&
           day.kind === "substitute-closed" &&
-          day.holidayName
+          day.substitutionFor &&
+          day.deferredByHolidays?.length
         )
           warnings.push({
             date: day.date,
-            holidayName: day.holidayName,
-            message: `${day.holidayName}ですが、前日の特別営業による振替休業になります。`,
+            holidayNames: day.deferredByHolidays,
+            message: `${day.substitutionFor}の振替休業は、翌日も${day.deferredByHolidays.join("、")}のため${day.date}へ移動します。`,
           });
       }
     }

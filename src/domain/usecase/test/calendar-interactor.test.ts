@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { defaultStoreCalendar, type StoreCalendar } from "@omische/model";
+import {
+  defaultStoreCalendar,
+  type IsoDate,
+  type StoreCalendar,
+} from "@omische/model";
 import { CalendarInteractor, type CalendarGateway } from "../src";
 
 class MemoryGateway implements CalendarGateway {
   public saved?: StoreCalendar;
+  public holidayData: ReadonlyMap<IsoDate, string> = new Map<IsoDate, string>([
+    ["2026-09-21", "敬老の日"],
+    ["2026-09-22", "国民の休日"],
+  ]);
   public load() {
     return undefined;
   }
@@ -11,12 +19,7 @@ class MemoryGateway implements CalendarGateway {
     this.saved = calendar;
   }
   public holidays(year: number) {
-    return year === 2026
-      ? new Map([
-          ["2026-09-21" as const, "敬老の日"],
-          ["2026-09-22" as const, "国民の休日"],
-        ])
-      : new Map();
+    return year === 2026 ? this.holidayData : new Map<IsoDate, string>();
   }
 }
 
@@ -64,8 +67,8 @@ describe("CalendarInteractor.substituteClosureWarnings", () => {
       interactor.substituteClosureWarnings(calendar, new Date(2026, 7, 14)),
     ).toEqual([
       expect.objectContaining({
-        date: "2026-09-22",
-        holidayName: "国民の休日",
+        date: "2026-09-23",
+        holidayNames: ["国民の休日"],
       }),
     ]);
   });
@@ -78,6 +81,36 @@ describe("CalendarInteractor.substituteClosureWarnings", () => {
         defaultStoreCalendar(),
         new Date(2026, 7, 14),
       ),
+    ).toEqual([]);
+  });
+
+  it("翌日が祝日でなければ自動振替休業でも通知しない", () => {
+    const gateway = new MemoryGateway();
+    gateway.holidayData = new Map<IsoDate, string>([
+      ["2026-09-21", "敬老の日"],
+    ]);
+    const interactor = new CalendarInteractor(gateway);
+    const base = defaultStoreCalendar();
+    const calendar = {
+      ...base,
+      rules: { ...base.rules, substituteClosure: "next-day" as const },
+    };
+
+    expect(
+      interactor.substituteClosureWarnings(calendar, new Date(2026, 7, 14)),
+    ).toEqual([]);
+  });
+
+  it("探索開始日より前にある競合は通知しない", () => {
+    const interactor = new CalendarInteractor(new MemoryGateway());
+    const base = defaultStoreCalendar();
+    const calendar = {
+      ...base,
+      rules: { ...base.rules, substituteClosure: "next-day" as const },
+    };
+
+    expect(
+      interactor.substituteClosureWarnings(calendar, new Date(2026, 9, 1)),
     ).toEqual([]);
   });
 });

@@ -457,7 +457,7 @@ function Settings({
         <aside className="rule-warnings" aria-labelledby="rule-warning-title">
           <strong id="rule-warning-title">このお休みで大丈夫ですか？</strong>
           <p>
-            「翌日だけ自動でお休み」の設定により、今月から11カ月後までに祝日を休業にする日があります。
+            「翌日だけ自動でお休み」の設定と連続する祝日が重なり、振替休業が後ろへ移動する日があります。
           </p>
           <ul>
             {substituteWarnings.map((warning) => (

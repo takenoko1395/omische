@@ -46,6 +46,8 @@ export type CalendarDay = Readonly<{
   isOpen: boolean;
   kind: DayKind;
   reason: string;
+  substitutionFor?: IsoDate;
+  deferredByHolidays?: readonly string[];
 }>;
 
 export const defaultStoreCalendar = (): StoreCalendar => ({
@@ -86,25 +88,42 @@ export function buildBusinessMonth(
   holidays: ReadonlyMap<IsoDate, string>,
 ): readonly CalendarDay[] {
   const daysInMonth = new Date(year, month, 0).getDate();
-  const substitutions = new Map<IsoDate, IsoDate>();
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    const date = new Date(year, month - 1, day);
-    const isoDate = toIsoDate(year, month, day);
+  const substitutions = new Map<
+    IsoDate,
+    Readonly<{ source: IsoDate; deferredByHolidays: readonly string[] }>
+  >();
+  for (const [isoDate] of [...holidays.entries()].sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    const [holidayYear = 0, holidayMonth = 0, holidayDay = 0] = isoDate
+      .split("-")
+      .map(Number);
+    const date = new Date(holidayYear, holidayMonth - 1, holidayDay);
     if (
-      holidays.has(isoDate) &&
       isRegularClosure(date, calendar.rules) &&
       calendar.rules.regularClosureOnHoliday === "open" &&
       calendar.rules.substituteClosure === "next-day"
     ) {
-      const following = new Date(year, month - 1, day + 1);
-      substitutions.set(
-        toIsoDate(
+      const following = new Date(holidayYear, holidayMonth - 1, holidayDay + 1);
+      let target = toIsoDate(
+        following.getFullYear(),
+        following.getMonth() + 1,
+        following.getDate(),
+      );
+      const deferredByHolidays: string[] = [];
+      let deferredHoliday = holidays.get(target);
+      while (deferredHoliday !== undefined) {
+        deferredByHolidays.push(deferredHoliday);
+        following.setDate(following.getDate() + 1);
+        target = toIsoDate(
           following.getFullYear(),
           following.getMonth() + 1,
           following.getDate(),
-        ),
-        isoDate,
-      );
+        );
+        deferredHoliday = holidays.get(target);
+      }
+      if (!substitutions.has(target))
+        substitutions.set(target, { source: isoDate, deferredByHolidays });
     }
   }
   return Array.from({ length: daysInMonth }, (_, index): CalendarDay => {
@@ -134,13 +153,15 @@ export function buildBusinessMonth(
         kind: "special-closed",
         reason: "臨時休業日として指定されています。",
       };
-    const substitutionFor = substitutions.get(isoDate);
-    if (substitutionFor !== undefined)
+    const substitution = substitutions.get(isoDate);
+    if (substitution !== undefined)
       return {
         ...base,
         isOpen: false,
         kind: "substitute-closed",
-        reason: `${substitutionFor}の祝日営業による振替休業です。`,
+        reason: `${substitution.source}の祝日営業による振替休業です。`,
+        substitutionFor: substitution.source,
+        deferredByHolidays: substitution.deferredByHolidays,
       };
     const regularClosure = isRegularClosure(date, calendar.rules);
     if (holidayName !== undefined) {
