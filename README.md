@@ -58,3 +58,13 @@ Windowsなどmakeがない環境では、対応する`npm run`コマンドを直
 - `make check`: format、lint、依存方向、型、テストを一括検査
 
 詳細な規約は`docs/development/coding_rules.md`を参照してください。
+
+## Pull RequestのGitHub Pages公開
+
+Pull Requestを作成・更新・再オープンすると、GitHub ActionsがProduction buildを作成し、
+GitHub Pagesへ公開します。RepositoryのSettingsで、PagesのSourceを
+**GitHub Actions**に設定してください。
+
+GitHub PagesはRepositoryにつき1サイトのため、新しいPull Requestのデプロイによって
+現在公開されている内容が置き換わります。また、ForkからのPull Requestでは書き込み
+権限が付与されないため、Pagesへのデプロイは実行できません。
