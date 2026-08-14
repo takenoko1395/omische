@@ -1,5 +1,5 @@
 {
-  "name": "@template/usecase",
+  "name": "@omische/usecase",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,6 +11,6 @@
     }
   },
   "dependencies": {
-    "@template/model": "0.1.0"
+    "@omische/model": "0.1.0"
   }
 }

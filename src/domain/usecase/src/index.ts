@@ -1,2 +1,2 @@
-export type { ItemGateway } from "./gateway/item-gateway";
-export { ItemInteractor } from "./interactor/item-interactor";
+export type { CalendarGateway } from "./gateway/calendar-gateway";
+export { CalendarInteractor } from "./interactor/calendar-interactor";

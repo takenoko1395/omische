@@ -3,7 +3,7 @@
   "references": [
     { "path": "src/domain/model" },
     { "path": "src/domain/usecase" },
-    { "path": "src/gateway/dummy-gateway" },
+    { "path": "src/gateway/browser-calendar" },
     { "path": "src/presentation" },
     { "path": "tsconfig.app.json" }
   ]

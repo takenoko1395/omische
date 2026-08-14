@@ -1,5 +1,5 @@
 {
-  "name": "@template/dummy-gateway",
+  "name": "@omische/browser-calendar",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,7 +11,7 @@
     }
   },
   "dependencies": {
-    "@template/model": "0.1.0",
-    "@template/usecase": "0.1.0"
+    "@omische/model": "0.1.0",
+    "@omische/usecase": "0.1.0"
   }
 }

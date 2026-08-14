@@ -1,33 +1,357 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Shippori+Mincho:wght@600&display=swap");
 :root {
-  color: #172033;
-  background: #f6f7fb;
-  font-family: system-ui, sans-serif;
+  font-family: "Noto Sans JP", sans-serif;
+  color: #29251f;
+  background: #eeeae1;
+  font-synthesis: none;
 }
-
+* {
+  box-sizing: border-box;
+}
 body {
   margin: 0;
 }
-
-main {
-  width: min(42rem, calc(100% - 2rem));
-  margin: 4rem auto;
-  padding: 2rem;
-  background: white;
-  border-radius: 1rem;
-  box-shadow: 0 1rem 3rem rgb(26 39 68 / 10%);
+button,
+input,
+select {
+  font: inherit;
 }
-
-header {
+button {
+  cursor: pointer;
+}
+.app {
+  min-height: 100vh;
+}
+.topbar {
+  height: 76px;
+  padding: 0 4vw;
+  background: #fffdf8;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-bottom: 1px solid #ddd7cc;
 }
-
-button {
-  padding: 0.6rem 1rem;
-  border: 0;
-  border-radius: 0.5rem;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #9d5138;
   color: white;
-  background: #3659d9;
-  cursor: pointer;
+  font-family: serif;
+  font-size: 21px;
+}
+.brand strong,
+.brand small {
+  display: block;
+}
+.brand small {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: #8b8276;
+}
+.export,
+.next {
+  border: 0;
+  border-radius: 100px;
+  color: white;
+  background: #985038;
+  padding: 12px 24px;
+  font-weight: 600;
+  box-shadow: 0 5px 15px #98503833;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(340px, 42%) 1fr;
+  min-height: calc(100vh - 76px);
+}
+.panel {
+  background: #fffdf8;
+  padding: 6vh clamp(28px, 5vw, 78px);
+}
+.wizard,
+.settings {
+  max-width: 500px;
+  margin: auto;
+}
+.eyebrow {
+  color: #a05238;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.progress {
+  height: 3px;
+  background: #ebe4db;
+  margin: 18px 0 55px;
+}
+.progress i {
+  display: block;
+  height: 100%;
+  background: #a05238;
+  transition: 0.3s;
+}
+h1 {
+  font-family: "Shippori Mincho", serif;
+  font-size: clamp(28px, 3.2vw, 44px);
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+.wizard > p:not(.eyebrow) {
+  color: #847a6e;
+  line-height: 1.8;
+}
+input,
+select {
+  width: 100%;
+  border: 1px solid #d8d0c4;
+  background: white;
+  padding: 14px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+.weekday-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 30px;
+}
+.weekday-options button {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid #d8d0c4;
+  background: white;
+}
+button.selected {
+  color: white !important;
+  background: #a05238 !important;
+  border-color: #a05238 !important;
+}
+.choices {
+  display: grid;
+  gap: 12px;
+  margin-top: 30px;
+}
+.choices button {
+  text-align: left;
+  border: 1px solid #ddd5ca;
+  background: white;
+  border-radius: 10px;
+  padding: 18px;
+  color: #433d36;
+}
+.choices span {
+  margin-right: 14px;
+  color: #a05238;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 55px;
+}
+.back {
+  border: 0;
+  background: transparent;
+  color: #746b61;
+}
+.preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: radial-gradient(circle at 40% 20%, #f8f4ec, #e8e3da);
+}
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 15px;
+  color: #6e665c;
+}
+.month-nav button {
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+}
+.calendar-card {
+  --accent: #a55233;
+  width: min(680px, 100%);
+  aspect-ratio: 1;
+  background: #fbf8f1;
+  box-shadow: 0 24px 60px #554b3c22;
+  padding: 6%;
+  display: flex;
+  flex-direction: column;
+}
+.card-heading {
+  text-align: center;
+  position: relative;
+  border-bottom: 1px solid #d8d1c5;
+  padding-bottom: 4%;
+}
+.card-heading p {
+  color: var(--accent);
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  margin: 0 0 8px;
+}
+.card-heading h2 {
+  font-family: "Shippori Mincho", serif;
+  font-size: clamp(22px, 3vw, 36px);
+  margin: 0;
+}
+.card-heading > span {
+  position: absolute;
+  right: 0;
+  bottom: 12px;
+  font-size: 13px;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 1;
+  padding-top: 2%;
+}
+.calendar-grid > b {
+  text-align: center;
+  font-size: 11px;
+  color: #857b6e;
+}
+.calendar-grid > button,
+.calendar-grid > i {
+  min-width: 0;
+  border: 2px solid transparent;
+  background: transparent;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.calendar-grid button span {
+  font-size: clamp(13px, 2vw, 22px);
+  font-weight: 600;
+}
+.calendar-grid button small {
+  color: var(--accent);
+  font-size: 9px;
+}
+.calendar-grid button.closed {
+  background: color-mix(in srgb, var(--accent) 12%, white);
+  color: var(--accent);
+}
+.calendar-grid button.special-open {
+  border-color: var(--accent);
+}
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  font-size: 9px;
+  color: #776f65;
+  margin: 10px;
+}
+.legend i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #aaa;
+  margin-right: 5px;
+}
+.legend .closed-dot {
+  background: var(--accent);
+}
+.legend .special-dot {
+  background: white;
+  border: 1px solid var(--accent);
+}
+.card-footer {
+  border-top: 1px solid #d8d1c5;
+  padding-top: 3%;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #776f65;
+}
+.settings h1 {
+  font-size: 30px;
+}
+.settings label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 13px 0;
+}
+.settings input,
+.settings select {
+  padding: 9px;
+}
+.settings input[type="color"] {
+  height: 42px;
+  padding: 5px;
+}
+.exception-buttons {
+  display: flex;
+  gap: 8px;
+}
+.exception-buttons button,
+.restart {
+  border: 1px solid #cfc6ba;
+  background: white;
+  border-radius: 7px;
+  padding: 9px;
+  font-size: 11px;
+}
+.restart {
+  margin-top: 22px;
+  width: 100%;
+}
+.theme-minimal .calendar-card {
+  background: #fff;
+}
+.theme-japanese .calendar-card {
+  background: #f8f4eb;
+  border: 8px double #3f4439;
+}
+.theme-japanese .card-heading h2 {
+  letter-spacing: 0.18em;
+}
+@media (max-width: 800px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .panel {
+    min-height: 570px;
+  }
+  .preview {
+    padding: 18px;
+  }
+  .calendar-card {
+    padding: 5%;
+  }
+  .topbar {
+    padding: 0 18px;
+  }
+  .brand strong {
+    font-size: 13px;
+  }
+  .export {
+    padding: 10px 14px;
+    font-size: 12px;
+  }
+  .card-footer span {
+    max-width: 55%;
+    text-align: right;
+  }
 }
