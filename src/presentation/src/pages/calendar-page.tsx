@@ -5,6 +5,7 @@ import type {
   IsoDate,
   StoreCalendar,
   Weekday,
+  toIsoDate,
 } from "@omische/model";
 import type { SubstituteClosureWarning } from "@omische/usecase";
 import { useCalendar } from "../providers/calendar-provider";
@@ -404,6 +405,22 @@ function Settings({
 }) {
   const [exceptionStart, setExceptionStart] = useState<IsoDate | "">("");
   const [exceptionEnd, setExceptionEnd] = useState<IsoDate | "">("");
+  const [exceptionMonth, setExceptionMonth] = useState(
+    new Date(now.getFullYear(), now.getMonth(), 1),
+  );
+  const selectExceptionDate = (date: IsoDate) => {
+    if (!exceptionStart || exceptionEnd) {
+      setExceptionStart(date);
+      setExceptionEnd("");
+      return;
+    }
+    if (date < exceptionStart) {
+      setExceptionEnd(exceptionStart);
+      setExceptionStart(date);
+      return;
+    }
+    setExceptionEnd(date);
+  };
   const addException = (kind: "open" | "closed") => {
     if (!exceptionStart || !exceptionEnd) return;
     setExceptionRange(kind, exceptionStart, exceptionEnd);
@@ -500,34 +517,98 @@ function Settings({
           onChange={(e) => update({ ...calendar, mainColor: e.target.value })}
         />
       </label>
-      <fieldset className="exception-range">
-        <legend>追加の営業日・休業日</legend>
-        <label>
-          開始日
-          <input
-            type="date"
-            value={exceptionStart}
-            onChange={(e) => setExceptionStart(e.target.value as IsoDate)}
-          />
-        </label>
-        <label>
-          終了日
-          <input
-            type="date"
-            min={exceptionStart}
-            value={exceptionEnd}
-            onChange={(e) => setExceptionEnd(e.target.value as IsoDate)}
-          />
-        </label>
-      </fieldset>
+      <ExceptionRangePicker
+        month={exceptionMonth}
+        start={exceptionStart}
+        end={exceptionEnd}
+        onMonthChange={setExceptionMonth}
+        onSelect={selectExceptionDate}
+      />
       <div className="exception-buttons">
-        <button onClick={() => addException("open")}>営業日として追加</button>
-        <button onClick={() => addException("closed")}>休業日として追加</button>
+        <button
+          disabled={!exceptionStart || !exceptionEnd}
+          onClick={() => addException("open")}
+        >
+          営業日として追加
+        </button>
+        <button
+          disabled={!exceptionStart || !exceptionEnd}
+          onClick={() => addException("closed")}
+        >
+          休業日として追加
+        </button>
       </div>
       <button className="restart" onClick={restart}>
         質問形式で設定し直す
       </button>
     </div>
+  );
+}
+function ExceptionRangePicker({
+  month,
+  start,
+  end,
+  onMonthChange,
+  onSelect,
+}: {
+  month: Date;
+  start: IsoDate | "";
+  end: IsoDate | "";
+  onMonthChange: (month: Date) => void;
+  onSelect: (date: IsoDate) => void;
+}) {
+  const year = month.getFullYear();
+  const monthNumber = month.getMonth() + 1;
+  const daysInMonth = new Date(year, monthNumber, 0).getDate();
+  const firstWeekday = new Date(year, monthNumber - 1, 1).getDay();
+  const move = (offset: number) =>
+    onMonthChange(new Date(year, month.getMonth() + offset, 1));
+  return (
+    <fieldset className="exception-range">
+      <legend>追加の営業日・休業日</legend>
+      <p className="range-help">
+        {start
+          ? end
+            ? `${start} 〜 ${end} を選択中です。選び直す場合は別の日をタップしてください。`
+            : `${start} からの終了日をタップしてください。同じ日だけなら、もう一度同じ日をタップします。`
+          : "カレンダーで開始日をタップし、続けて終了日をタップしてください。"}
+      </p>
+      <div className="range-month-nav">
+        <button type="button" onClick={() => move(-1)} aria-label="前の月">
+          ‹
+        </button>
+        <strong>
+          {year}年 {monthNumber}月
+        </strong>
+        <button type="button" onClick={() => move(1)} aria-label="次の月">
+          ›
+        </button>
+      </div>
+      <div className="range-calendar">
+        {WEEKDAYS.map((weekday) => (
+          <b key={weekday}>{weekday}</b>
+        ))}
+        {Array.from({ length: firstWeekday }, (_, index) => (
+          <i key={`range-empty-${index}`} />
+        ))}
+        {Array.from({ length: daysInMonth }, (_, index) => {
+          const date = toIsoDate(year, monthNumber, index + 1);
+          const selected = date === start || date === end;
+          const inRange = start && end && date > start && date < end;
+          return (
+            <button
+              type="button"
+              key={date}
+              className={`${selected ? "range-edge" : ""} ${inRange ? "in-range" : ""}`}
+              aria-pressed={selected || Boolean(inRange)}
+              onClick={() => onSelect(date)}
+            >
+              {index + 1}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 const CalendarCard = forwardRef<

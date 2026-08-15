@@ -80,6 +80,11 @@ button {
   max-width: 500px;
   margin: auto;
 }
+.wizard {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(88vh - 76px);
+}
 .eyebrow {
   color: #a05238;
   font-size: 12px;
@@ -181,7 +186,8 @@ button.selected {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 55px;
+  margin-top: auto;
+  padding-top: 40px;
 }
 .back {
   border: 0;
@@ -371,9 +377,6 @@ button.selected {
   padding: 5px;
 }
 .exception-range {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
   border: 0;
   padding: 0;
   margin: 18px 0 8px;
@@ -382,8 +385,55 @@ button.selected {
   font-size: 12px;
   font-weight: 600;
 }
-.exception-range label {
-  margin: 4px 0;
+.range-help {
+  min-height: 3.4em;
+  color: #746b61;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.range-month-nav {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  text-align: center;
+  margin: 8px 0;
+}
+.range-month-nav button {
+  border: 0;
+  background: transparent;
+  font-size: 22px;
+}
+.range-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.range-calendar b {
+  padding: 5px;
+  color: #857b6e;
+  font-size: 10px;
+  text-align: center;
+}
+.range-calendar button,
+.range-calendar i {
+  min-height: 34px;
+}
+.range-calendar button {
+  border: 0;
+  border-radius: 7px;
+  background: white;
+  color: #433d36;
+  font-size: 11px;
+}
+.range-calendar button.in-range {
+  border-radius: 3px;
+  background: #a0523822;
+  color: #7d3f2c;
+}
+.range-calendar button.range-edge {
+  background: #a05238;
+  color: white;
+  font-weight: 700;
 }
 .exception-buttons {
   display: flex;
@@ -396,6 +446,10 @@ button.selected {
   border-radius: 7px;
   padding: 9px;
   font-size: 11px;
+}
+.exception-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 .restart {
   margin-top: 22px;
@@ -417,6 +471,9 @@ button.selected {
   }
   .panel {
     min-height: 570px;
+  }
+  .wizard {
+    min-height: 490px;
   }
   .preview {
     padding: 18px;
