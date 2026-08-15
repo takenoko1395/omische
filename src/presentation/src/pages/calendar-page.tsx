@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState, forwardRef } from "react";
+import { toIsoDate } from "@omische/model";
 import type {
   CalendarDay,
   BusinessHours,
   IsoDate,
   StoreCalendar,
   Weekday,
-  toIsoDate,
 } from "@omische/model";
 import type { SubstituteClosureWarning } from "@omische/usecase";
 import { useCalendar } from "../providers/calendar-provider";
