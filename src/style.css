@@ -214,6 +214,41 @@ button.selected {
   background: transparent;
   font-size: 28px;
 }
+.preview-range-editor {
+  width: min(680px, 100%);
+  min-height: 66px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid #d8d0c4;
+  border-radius: 10px;
+  background: #fffdf8;
+  color: #62594f;
+  font-size: 11px;
+}
+.preview-range-editor p {
+  margin: 0;
+  line-height: 1.6;
+}
+.preview-range-editor > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+.preview-range-editor button {
+  border: 0;
+  border-radius: 100px;
+  background: #985038;
+  color: white;
+  padding: 7px 13px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.preview-range-editor button.clear-range {
+  border: 1px solid #cfc6ba;
+  background: white;
+  color: #62594f;
+}
 .calendar-card {
   --accent: #a55233;
   width: min(680px, 100%);
@@ -269,6 +304,13 @@ button.selected {
   align-items: center;
   justify-content: center;
 }
+.calendar-grid > button {
+  appearance: none;
+  -webkit-appearance: none;
+  color: #29251f;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
 .calendar-grid button span {
   font-size: clamp(13px, 2vw, 22px);
   font-weight: 600;
@@ -287,6 +329,19 @@ button.selected {
 }
 .calendar-grid button.special-open {
   border-color: var(--accent);
+}
+.calendar-grid button.in-range {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 22%, white);
+}
+.calendar-grid button.range-edge {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
+}
+.calendar-grid button.range-edge small,
+.calendar-grid button.range-edge > span {
+  color: white;
 }
 .legend {
   display: flex;
@@ -376,80 +431,12 @@ button.selected {
   height: 42px;
   padding: 5px;
 }
-.exception-range {
-  border: 0;
-  padding: 0;
-  margin: 18px 0 8px;
-}
-.exception-range legend {
-  font-size: 12px;
-  font-weight: 600;
-}
-.range-help {
-  min-height: 3.4em;
-  color: #746b61;
-  font-size: 11px;
-  line-height: 1.7;
-}
-.range-month-nav {
-  display: grid;
-  grid-template-columns: 36px 1fr 36px;
-  align-items: center;
-  text-align: center;
-  margin: 8px 0;
-}
-.range-month-nav button {
-  border: 0;
-  background: transparent;
-  font-size: 22px;
-}
-.range-calendar {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-}
-.range-calendar b {
-  padding: 5px;
-  color: #857b6e;
-  font-size: 10px;
-  text-align: center;
-}
-.range-calendar button,
-.range-calendar i {
-  min-height: 34px;
-}
-.range-calendar button {
-  border: 0;
-  border-radius: 7px;
-  background: white;
-  color: #433d36;
-  font-size: 11px;
-}
-.range-calendar button.in-range {
-  border-radius: 3px;
-  background: #a0523822;
-  color: #7d3f2c;
-}
-.range-calendar button.range-edge {
-  background: #a05238;
-  color: white;
-  font-weight: 700;
-}
-.exception-buttons {
-  display: flex;
-  gap: 8px;
-}
-.exception-buttons button,
 .restart {
   border: 1px solid #cfc6ba;
   background: white;
   border-radius: 7px;
   padding: 9px;
   font-size: 11px;
-}
-.exception-buttons button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
 }
 .restart {
   margin-top: 22px;
