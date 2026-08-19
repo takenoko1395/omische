@@ -10,6 +10,11 @@ import type { StoreCalendar } from "@omische/model";
 type ContextValue = {
   calendar: StoreCalendar;
   update: (calendar: StoreCalendar) => void;
+  setExceptionRange: (
+    kind: "open" | "closed",
+    start: string,
+    end: string,
+  ) => void;
   interactor: CalendarInteractor;
 };
 const Context = createContext<ContextValue | undefined>(undefined);
@@ -26,6 +31,12 @@ export function CalendarProvider({
         setCalendar(next);
         interactor.save(next);
       },
+      setExceptionRange: (
+        kind: "open" | "closed",
+        start: string,
+        end: string,
+      ) =>
+        setCalendar(interactor.setExceptionRange(calendar, kind, start, end)),
     }),
     [calendar, interactor],
   );

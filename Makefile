@@ -1,4 +1,7 @@
-.PHONY: install dev format format-check lint check-dependencies typecheck test build check
+.PHONY: setup install dev format format-check lint check-dependencies typecheck test build check
+
+setup:
+	./scripts/setup-development.sh
 
 install:
 	npm install

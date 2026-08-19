@@ -5,6 +5,11 @@ import {
   type StoreCalendar,
 } from "@omische/model";
 import type { CalendarGateway } from "../gateway/calendar-gateway";
+export type SubstituteClosureWarning = Readonly<{
+  date: string;
+  holidayNames: readonly string[];
+  message: string;
+}>;
 export class CalendarInteractor {
   public constructor(private readonly gateway: CalendarGateway) {}
   public load(): StoreCalendar {
@@ -13,6 +18,40 @@ export class CalendarInteractor {
   public save(calendar: StoreCalendar): StoreCalendar {
     this.gateway.save(calendar);
     return calendar;
+  }
+  public setExceptionRange(
+    calendar: StoreCalendar,
+    kind: "open" | "closed",
+    start: string,
+    end: string,
+  ): StoreCalendar {
+    const dates: string[] = [];
+    const current = new Date(`${start}T00:00:00`);
+    const last = new Date(`${end}T00:00:00`);
+    if (Number.isNaN(current.valueOf()) || current > last) return calendar;
+    while (current <= last) {
+      dates.push(
+        `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}-${String(current.getDate()).padStart(2, "0")}`,
+      );
+      current.setDate(current.getDate() + 1);
+    }
+    const selected = new Set(dates);
+    const rules = {
+      ...calendar.rules,
+      specialOpenDates:
+        kind === "open"
+          ? [...new Set([...calendar.rules.specialOpenDates, ...dates])]
+          : calendar.rules.specialOpenDates.filter(
+              (date) => !selected.has(date),
+            ),
+      specialClosedDates:
+        kind === "closed"
+          ? [...new Set([...calendar.rules.specialClosedDates, ...dates])]
+          : calendar.rules.specialClosedDates.filter(
+              (date) => !selected.has(date),
+            ),
+    } as StoreCalendar["rules"];
+    return this.save({ ...calendar, rules });
   }
   public month(
     calendar: StoreCalendar,
@@ -25,5 +64,50 @@ export class CalendarInteractor {
       month,
       this.gateway.holidays(year),
     );
+  }
+  public substituteClosureWarnings(
+    calendar: StoreCalendar,
+    from: Date,
+    monthsAhead = 11,
+  ): readonly SubstituteClosureWarning[] {
+    if (calendar.rules.substituteClosure !== "next-day") return [];
+    const toIsoDate = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const startDate = toIsoDate(from);
+    const endMonth = new Date(
+      from.getFullYear(),
+      from.getMonth() + monthsAhead,
+      1,
+    );
+    const endDay = Math.min(
+      from.getDate(),
+      new Date(endMonth.getFullYear(), endMonth.getMonth() + 1, 0).getDate(),
+    );
+    const endDate = toIsoDate(
+      new Date(endMonth.getFullYear(), endMonth.getMonth(), endDay),
+    );
+    const warnings: SubstituteClosureWarning[] = [];
+    for (let offset = 0; offset <= monthsAhead; offset += 1) {
+      const target = new Date(from.getFullYear(), from.getMonth() + offset, 1);
+      for (const day of this.month(
+        calendar,
+        target.getFullYear(),
+        target.getMonth() + 1,
+      )) {
+        if (
+          day.date >= startDate &&
+          day.date <= endDate &&
+          day.kind === "substitute-closed" &&
+          day.substitutionFor &&
+          day.deferredByHolidays?.length
+        )
+          warnings.push({
+            date: day.date,
+            holidayNames: day.deferredByHolidays,
+            message: `${day.substitutionFor}の振替休業は、翌日も${day.deferredByHolidays.join("、")}のため${day.date}へ移動します。`,
+          });
+      }
+    }
+    return warnings;
   }
 }

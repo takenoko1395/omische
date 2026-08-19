@@ -80,6 +80,11 @@ button {
   max-width: 500px;
   margin: auto;
 }
+.wizard {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(88vh - 76px);
+}
 .eyebrow {
   color: #a05238;
   font-size: 12px;
@@ -148,15 +153,55 @@ button.selected {
   padding: 18px;
   color: #433d36;
 }
-.choices span {
+.choices button > span:first-child {
   margin-right: 14px;
   color: #a05238;
+}
+.choices .choice-copy {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  vertical-align: middle;
+}
+.choices .choice-copy small {
+  color: #847a6e;
+  font-size: 10px;
+  font-weight: 400;
+}
+.choices button.selected .choice-copy small {
+  color: #fff9;
+}
+.time-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 10px;
+  margin-top: 24px;
+}
+.time-row label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.break-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  font-size: 13px;
+}
+.break-toggle input {
+  width: auto;
+  margin: 0;
+}
+.break-row {
+  margin-top: 12px;
 }
 .actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 55px;
+  margin-top: auto;
+  padding-top: 40px;
 }
 .back {
   border: 0;
@@ -182,6 +227,41 @@ button.selected {
   border: 0;
   background: transparent;
   font-size: 28px;
+}
+.preview-range-editor {
+  width: min(680px, 100%);
+  min-height: 66px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid #d8d0c4;
+  border-radius: 10px;
+  background: #fffdf8;
+  color: #62594f;
+  font-size: 11px;
+}
+.preview-range-editor p {
+  margin: 0;
+  line-height: 1.6;
+}
+.preview-range-editor > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+.preview-range-editor button {
+  border: 0;
+  border-radius: 100px;
+  background: #985038;
+  color: white;
+  padding: 7px 13px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.preview-range-editor button.clear-range {
+  border: 1px solid #cfc6ba;
+  background: white;
+  color: #62594f;
 }
 .calendar-card {
   --accent: #a55233;
@@ -238,6 +318,13 @@ button.selected {
   align-items: center;
   justify-content: center;
 }
+.calendar-grid > button {
+  appearance: none;
+  -webkit-appearance: none;
+  color: #29251f;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
 .calendar-grid button span {
   font-size: clamp(13px, 2vw, 22px);
   font-weight: 600;
@@ -246,12 +333,29 @@ button.selected {
   color: var(--accent);
   font-size: 9px;
 }
+.calendar-grid button.holiday > span,
+.calendar-grid button.holiday > small:first-of-type {
+  color: #c43d3d;
+}
 .calendar-grid button.closed {
   background: color-mix(in srgb, var(--accent) 12%, white);
   color: var(--accent);
 }
 .calendar-grid button.special-open {
   border-color: var(--accent);
+}
+.calendar-grid button.in-range {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 22%, white);
+}
+.calendar-grid button.range-edge {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
+}
+.calendar-grid button.range-edge small,
+.calendar-grid button.range-edge > span {
+  color: white;
 }
 .legend {
   display: flex;
@@ -287,6 +391,46 @@ button.selected {
 .settings h1 {
   font-size: 30px;
 }
+.schedule-details {
+  border-block: 1px solid #e1d9ce;
+  padding: 12px 0;
+  margin: 14px 0;
+}
+.schedule-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.schedule-details h2 {
+  margin: 18px 0 -10px;
+  font-size: 13px;
+}
+.schedule-details .time-row {
+  margin-top: 12px;
+}
+.rule-warnings {
+  border: 1px solid #d6a34b;
+  border-radius: 10px;
+  background: #fff8e8;
+  padding: 14px;
+  margin: 14px 0;
+  color: #65491b;
+  font-size: 11px;
+}
+.rule-warnings p {
+  line-height: 1.6;
+  margin: 6px 0 8px;
+}
+.rule-warnings ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+.rule-warnings time {
+  display: block;
+  font-weight: 700;
+}
 .settings label {
   display: block;
   font-size: 12px;
@@ -301,11 +445,6 @@ button.selected {
   height: 42px;
   padding: 5px;
 }
-.exception-buttons {
-  display: flex;
-  gap: 8px;
-}
-.exception-buttons button,
 .restart {
   border: 1px solid #cfc6ba;
   background: white;
@@ -333,6 +472,9 @@ button.selected {
   }
   .panel {
     min-height: 570px;
+  }
+  .wizard {
+    min-height: 490px;
   }
   .preview {
     padding: 18px;

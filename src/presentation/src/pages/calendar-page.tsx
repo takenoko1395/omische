@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState, forwardRef } from "react";
 import type {
   CalendarDay,
+  BusinessHours,
   IsoDate,
   StoreCalendar,
   Weekday,
 } from "@omische/model";
+import type { SubstituteClosureWarning } from "@omische/usecase";
 import { useCalendar } from "../providers/calendar-provider";
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 const now = new Date();
@@ -13,19 +15,44 @@ const updateRules = (
   changes: Partial<StoreCalendar["rules"]>,
 ): StoreCalendar => ({ ...calendar, rules: { ...calendar.rules, ...changes } });
 export function CalendarPage() {
-  const { calendar, update, interactor } = useCalendar();
+  const { calendar, update, interactor, setExceptionRange } = useCalendar();
   const [month, setMonth] = useState(
     new Date(now.getFullYear(), now.getMonth(), 1),
   );
   const [wizard, setWizard] = useState(true);
   const [step, setStep] = useState(0);
+  const [exceptionStart, setExceptionStart] = useState<IsoDate | "">("");
+  const [exceptionEnd, setExceptionEnd] = useState<IsoDate | "">("");
   const exportRef = useRef<HTMLDivElement>(null);
   const days = useMemo(
     () => interactor.month(calendar, month.getFullYear(), month.getMonth() + 1),
     [calendar, interactor, month],
   );
+  const substituteWarnings = useMemo(
+    () => interactor.substituteClosureWarnings(calendar, now),
+    [calendar, interactor],
+  );
   const moveMonth = (offset: number) =>
     setMonth(new Date(month.getFullYear(), month.getMonth() + offset, 1));
+  const selectExceptionDate = (date: IsoDate) => {
+    if (!exceptionStart || exceptionEnd) {
+      setExceptionStart(date);
+      setExceptionEnd("");
+      return;
+    }
+    if (date < exceptionStart) {
+      setExceptionEnd(exceptionStart);
+      setExceptionStart(date);
+      return;
+    }
+    setExceptionEnd(date);
+  };
+  const applyException = (kind: "open" | "closed") => {
+    if (!exceptionStart || !exceptionEnd) return;
+    setExceptionRange(kind, exceptionStart, exceptionEnd);
+    setExceptionStart("");
+    setExceptionEnd("");
+  };
   const download = () => exportPng(calendar, month, days);
   return (
     <main className={`app theme-${calendar.theme}`}>
@@ -55,7 +82,10 @@ export function CalendarPage() {
             <Settings
               calendar={calendar}
               update={update}
+              substituteWarnings={substituteWarnings}
               restart={() => {
+                setExceptionStart("");
+                setExceptionEnd("");
                 setStep(0);
                 setWizard(true);
               }}
@@ -70,11 +100,44 @@ export function CalendarPage() {
             </span>
             <button onClick={() => moveMonth(1)}>›</button>
           </div>
+          {!wizard && (
+            <div className="preview-range-editor" aria-live="polite">
+              <p>
+                {exceptionStart
+                  ? exceptionEnd
+                    ? `${exceptionStart} 〜 ${exceptionEnd}`
+                    : `${exceptionStart} からの終了日をタップ。同じ日だけなら、もう一度タップしてください。`
+                  : "カレンダーを2回タップして、追加する営業日・休業日の期間を選択します。"}
+              </p>
+              {exceptionStart && exceptionEnd && (
+                <div>
+                  <button onClick={() => applyException("open")}>
+                    臨時営業にする
+                  </button>
+                  <button onClick={() => applyException("closed")}>
+                    臨時休業にする
+                  </button>
+                  <button
+                    className="clear-range"
+                    onClick={() => {
+                      setExceptionStart("");
+                      setExceptionEnd("");
+                    }}
+                  >
+                    選び直す
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <CalendarCard
             ref={exportRef}
             calendar={calendar}
             month={month}
             days={days}
+            rangeStart={exceptionStart}
+            rangeEnd={exceptionEnd}
+            onDateSelect={wizard ? undefined : selectExceptionDate}
           />
         </section>
       </section>
@@ -94,12 +157,17 @@ function Wizard({
   setStep: (v: number) => void;
   finish: () => void;
 }) {
-  const next = () => (step === 4 ? finish() : setStep(step + 1));
+  const holidayPolicy = getHolidayPolicy(calendar);
+  const lastStep = holidayPolicy === "open" ? 5 : 4;
+  const totalSteps = lastStep + 1;
+  const next = () => (step === lastStep ? finish() : setStep(step + 1));
   return (
     <div className="wizard">
-      <p className="eyebrow">はじめの設定 · {step + 1} / 5</p>
+      <p className="eyebrow">
+        はじめの設定 · {step + 1} / {totalSteps}
+      </p>
       <div className="progress">
-        <i style={{ width: `${(step + 1) * 20}%` }} />
+        <i style={{ width: `${((step + 1) / totalSteps) * 100}%` }} />
       </div>
       {step === 0 && (
         <>
@@ -117,6 +185,35 @@ function Wizard({
         </>
       )}
       {step === 1 && (
+        <ScheduleQuestion
+          title="平日の営業時間を教えてください"
+          description="月〜金の営業日について設定します。"
+          value={calendar.businessHours.weekday}
+          onChange={(value) =>
+            update({
+              ...calendar,
+              businessHours: { ...calendar.businessHours, weekday: value },
+            })
+          }
+        />
+      )}
+      {step === 2 && (
+        <ScheduleQuestion
+          title="土日・祝日の営業時間は？"
+          description="平日と同じ時間でも、そのまま次へ進めます。"
+          value={calendar.businessHours.weekendHoliday}
+          onChange={(value) =>
+            update({
+              ...calendar,
+              businessHours: {
+                ...calendar.businessHours,
+                weekendHoliday: value,
+              },
+            })
+          }
+        />
+      )}
+      {step === 3 && (
         <>
           <h1>
             毎週のお休みは
@@ -148,59 +245,43 @@ function Wizard({
           </div>
         </>
       )}
-      {step === 2 && (
-        <>
-          <h1>祝日は営業しますか？</h1>
-          <p>定休日ではない祝日の営業について選びます。</p>
-          <Choice
-            selected={calendar.rules.holidays}
-            options={[
-              ["open", "営業する"],
-              ["closed", "お休みする"],
-            ]}
-            onChange={(v) =>
-              update(
-                updateRules(calendar, { holidays: v as "open" | "closed" }),
-              )
-            }
-          />
-        </>
-      )}
-      {step === 3 && (
-        <>
-          <h1>
-            定休日が祝日なら
-            <br />
-            どうしますか？
-          </h1>
-          <Choice
-            selected={calendar.rules.regularClosureOnHoliday}
-            options={[
-              ["open", "祝日なので営業する"],
-              ["closed", "そのまま休む"],
-            ]}
-            onChange={(v) =>
-              update(
-                updateRules(calendar, {
-                  regularClosureOnHoliday: v as "open" | "closed",
-                }),
-              )
-            }
-          />
-        </>
-      )}
       {step === 4 && (
         <>
+          <h1>祝日はどのように営業しますか？</h1>
+          <p>祝日といつもの営業日・定休日が重なったときの扱いです。</p>
+          <Choice
+            selected={holidayPolicy}
+            options={[
+              ["usual", "いつもの曜日どおり"],
+              ["open", "祝日は営業する"],
+              ["closed", "祝日はお休みする"],
+            ]}
+            descriptions={{
+              usual: "営業日なら営業し、定休日ならお休みします。",
+              open: "定休日と重なっても、祝日は営業します。",
+              closed: "営業日と重なっても、祝日はお休みします。",
+            }}
+            onChange={(value) =>
+              update(updateHolidayPolicy(calendar, value as HolidayPolicy))
+            }
+          />
+        </>
+      )}
+      {step === 5 && holidayPolicy === "open" && (
+        <>
           <h1>
-            祝日営業の翌日は
+            特別営業したあとの
             <br />
-            お休みにしますか？
+            お休みはどうする？
           </h1>
+          <p>
+            連休にしたい場合は、完成後に「追加の休業日」として期間を指定できます。
+          </p>
           <Choice
             selected={calendar.rules.substituteClosure}
             options={[
-              ["next-day", "翌日を振替休業にする"],
-              ["none", "振替休業はなし"],
+              ["none", "あとで休業期間を自分で設定する"],
+              ["next-day", "翌日だけ自動でお休みにする"],
             ]}
             onChange={(v) =>
               update(
@@ -219,19 +300,109 @@ function Wizard({
           </button>
         )}
         <button className="next" onClick={next}>
-          {step === 4 ? "設定を完成する" : "次へ"}
+          {step === lastStep ? "設定を完成する" : "次へ"}
         </button>
       </div>
+    </div>
+  );
+}
+function ScheduleQuestion({
+  title,
+  description,
+  value,
+  onChange,
+}: {
+  title: string;
+  description?: string;
+  value: BusinessHours;
+  onChange: (value: BusinessHours) => void;
+}) {
+  const hasBreak = value.breakTime !== undefined;
+  const breakTime = value.breakTime;
+  return (
+    <div className="schedule-question">
+      {title && <h1>{title}</h1>}
+      {description && <p>{description}</p>}
+      <div className="time-row">
+        <label>
+          開店
+          <input
+            type="time"
+            value={value.open}
+            onChange={(event) =>
+              onChange({ ...value, open: event.target.value })
+            }
+          />
+        </label>
+        <span>〜</span>
+        <label>
+          閉店
+          <input
+            type="time"
+            value={value.close}
+            onChange={(event) =>
+              onChange({ ...value, close: event.target.value })
+            }
+          />
+        </label>
+      </div>
+      <label className="break-toggle">
+        <input
+          type="checkbox"
+          checked={hasBreak}
+          onChange={(event) =>
+            onChange(
+              event.target.checked
+                ? { ...value, breakTime: { start: "14:00", end: "15:00" } }
+                : { open: value.open, close: value.close },
+            )
+          }
+        />
+        中休憩がある
+      </label>
+      {breakTime && (
+        <div className="time-row break-row">
+          <label>
+            休憩開始
+            <input
+              type="time"
+              value={breakTime.start}
+              onChange={(event) =>
+                onChange({
+                  ...value,
+                  breakTime: { ...breakTime, start: event.target.value },
+                })
+              }
+            />
+          </label>
+          <span>〜</span>
+          <label>
+            休憩終了
+            <input
+              type="time"
+              value={breakTime.end}
+              onChange={(event) =>
+                onChange({
+                  ...value,
+                  breakTime: { ...breakTime, end: event.target.value },
+                })
+              }
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }
 function Choice({
   selected,
   options,
+  descriptions,
   onChange,
 }: {
   selected: string;
   options: readonly (readonly [string, string])[];
+  descriptions?: Readonly<Record<string, string>>;
   onChange: (v: string) => void;
 }) {
   return (
@@ -243,41 +414,40 @@ function Choice({
           onClick={() => onChange(value)}
         >
           <span>{selected === value ? "●" : "○"}</span>
-          {label}
+          <span className="choice-copy">
+            <strong>{label}</strong>
+            {descriptions?.[value] && <small>{descriptions[value]}</small>}
+          </span>
         </button>
       ))}
     </div>
   );
 }
+type HolidayPolicy = "usual" | "open" | "closed";
+function getHolidayPolicy(calendar: StoreCalendar): HolidayPolicy {
+  if (calendar.rules.holidays === "closed") return "closed";
+  return calendar.rules.regularClosureOnHoliday === "open" ? "open" : "usual";
+}
+function updateHolidayPolicy(
+  calendar: StoreCalendar,
+  policy: HolidayPolicy,
+): StoreCalendar {
+  return updateRules(calendar, {
+    holidays: policy === "closed" ? "closed" : "open",
+    regularClosureOnHoliday: policy === "open" ? "open" : "closed",
+  });
+}
 function Settings({
   calendar,
   update,
   restart,
+  substituteWarnings,
 }: {
   calendar: StoreCalendar;
   update: (v: StoreCalendar) => void;
   restart: () => void;
+  substituteWarnings: readonly SubstituteClosureWarning[];
 }) {
-  const [exception, setException] = useState<IsoDate | "">("");
-  const addException = (kind: "open" | "closed") => {
-    if (!exception) return;
-    update(
-      updateRules(
-        calendar,
-        kind === "open"
-          ? {
-              specialOpenDates: [...calendar.rules.specialOpenDates, exception],
-            }
-          : {
-              specialClosedDates: [
-                ...calendar.rules.specialClosedDates,
-                exception,
-              ],
-            },
-      ),
-    );
-    setException("");
-  };
   return (
     <div className="settings">
       <p className="eyebrow">カレンダー設定</p>
@@ -293,15 +463,50 @@ function Settings({
           onChange={(e) => update({ ...calendar, storeName: e.target.value })}
         />
       </label>
-      <label>
-        営業時間
-        <input
-          value={calendar.businessHours}
-          onChange={(e) =>
-            update({ ...calendar, businessHours: e.target.value })
+      <details className="schedule-details">
+        <summary>営業時間を変更</summary>
+        <h2>平日</h2>
+        <ScheduleQuestion
+          title=""
+          value={calendar.businessHours.weekday}
+          onChange={(value) =>
+            update({
+              ...calendar,
+              businessHours: { ...calendar.businessHours, weekday: value },
+            })
           }
         />
-      </label>
+        <h2>土日・祝日</h2>
+        <ScheduleQuestion
+          title=""
+          value={calendar.businessHours.weekendHoliday}
+          onChange={(value) =>
+            update({
+              ...calendar,
+              businessHours: {
+                ...calendar.businessHours,
+                weekendHoliday: value,
+              },
+            })
+          }
+        />
+      </details>
+      {substituteWarnings.length > 0 && (
+        <aside className="rule-warnings" aria-labelledby="rule-warning-title">
+          <strong id="rule-warning-title">このお休みで大丈夫ですか？</strong>
+          <p>
+            「翌日だけ自動でお休み」の設定と連続する祝日が重なり、振替休業が後ろへ移動する日があります。
+          </p>
+          <ul>
+            {substituteWarnings.map((warning) => (
+              <li key={warning.date}>
+                <time dateTime={warning.date}>{warning.date}</time>
+                {warning.message}
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
       <label>
         注記
         <input
@@ -333,18 +538,6 @@ function Settings({
           onChange={(e) => update({ ...calendar, mainColor: e.target.value })}
         />
       </label>
-      <label>
-        臨時営業・休業
-        <input
-          type="date"
-          value={exception}
-          onChange={(e) => setException(e.target.value as IsoDate)}
-        />
-      </label>
-      <div className="exception-buttons">
-        <button onClick={() => addException("open")}>臨時営業に追加</button>
-        <button onClick={() => addException("closed")}>臨時休業に追加</button>
-      </div>
       <button className="restart" onClick={restart}>
         質問形式で設定し直す
       </button>
@@ -353,8 +546,15 @@ function Settings({
 }
 const CalendarCard = forwardRef<
   HTMLDivElement,
-  { calendar: StoreCalendar; month: Date; days: readonly CalendarDay[] }
->(({ calendar, month, days }, ref) => (
+  {
+    calendar: StoreCalendar;
+    month: Date;
+    days: readonly CalendarDay[];
+    rangeStart: IsoDate | "";
+    rangeEnd: IsoDate | "";
+    onDateSelect?: ((date: IsoDate) => void) | undefined;
+  }
+>(({ calendar, month, days, rangeStart, rangeEnd, onDateSelect }, ref) => (
   <div
     className="calendar-card"
     ref={ref}
@@ -379,11 +579,26 @@ const CalendarCard = forwardRef<
       )}
       {days.map((day) => (
         <button
+          type="button"
           key={day.date}
-          className={`${day.isOpen ? "open" : "closed"} ${day.kind}`}
+          className={`${day.isOpen ? "open" : "closed"} ${day.kind} ${day.isHoliday ? "holiday" : ""} ${day.date === rangeStart || day.date === rangeEnd ? "range-edge" : ""} ${rangeStart && rangeEnd && day.date > rangeStart && day.date < rangeEnd ? "in-range" : ""}`}
           title={day.reason}
+          aria-pressed={
+            onDateSelect
+              ? day.date === rangeStart ||
+                day.date === rangeEnd ||
+                Boolean(
+                  rangeStart &&
+                  rangeEnd &&
+                  day.date > rangeStart &&
+                  day.date < rangeEnd,
+                )
+              : undefined
+          }
+          onClick={() => onDateSelect?.(day.date)}
         >
           <span>{day.day}</span>
+          {day.isHoliday && <small>{day.holidayName}</small>}
           {!day.isOpen && <small>休</small>}
           {day.kind === "special-open" && <small>営</small>}
         </button>
@@ -404,7 +619,11 @@ const CalendarCard = forwardRef<
       </span>
     </div>
     <div className="card-footer">
-      <strong>{calendar.businessHours}</strong>
+      <strong>
+        平日 {formatBusinessHours(calendar.businessHours.weekday)}
+        <br />
+        土日祝 {formatBusinessHours(calendar.businessHours.weekendHoliday)}
+      </strong>
       <span>{calendar.note}</span>
     </div>
   </div>
@@ -455,11 +674,21 @@ function exportPng(
       c.fillText("休", x + 56, y + 72);
     }
   });
-  c.font = "26px sans-serif";
+  c.font = "20px sans-serif";
   c.fillStyle = "#29251f";
-  c.fillText(calendar.businessHours, 540, 1010);
+  c.fillText(
+    `平日 ${formatBusinessHours(calendar.businessHours.weekday)} / 土日祝 ${formatBusinessHours(calendar.businessHours.weekendHoliday)}`,
+    540,
+    1010,
+  );
   const link = document.createElement("a");
   link.download = `business-calendar-${month.getFullYear()}-${month.getMonth() + 1}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
+}
+function formatBusinessHours(hours: BusinessHours) {
+  const base = `${hours.open}–${hours.close}`;
+  return hours.breakTime
+    ? `${base}（休 ${hours.breakTime.start}–${hours.breakTime.end}）`
+    : base;
 }
