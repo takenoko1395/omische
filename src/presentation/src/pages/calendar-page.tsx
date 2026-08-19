@@ -112,10 +112,10 @@ export function CalendarPage() {
               {exceptionStart && exceptionEnd && (
                 <div>
                   <button onClick={() => applyException("open")}>
-                    営業日にする
+                    臨時営業にする
                   </button>
                   <button onClick={() => applyException("closed")}>
-                    休業日にする
+                    臨時休業にする
                   </button>
                   <button
                     className="clear-range"
@@ -157,13 +157,17 @@ function Wizard({
   setStep: (v: number) => void;
   finish: () => void;
 }) {
-  const lastStep = 6;
+  const holidayPolicy = getHolidayPolicy(calendar);
+  const lastStep = holidayPolicy === "open" ? 5 : 4;
+  const totalSteps = lastStep + 1;
   const next = () => (step === lastStep ? finish() : setStep(step + 1));
   return (
     <div className="wizard">
-      <p className="eyebrow">はじめの設定 · {step + 1} / 7</p>
+      <p className="eyebrow">
+        はじめの設定 · {step + 1} / {totalSteps}
+      </p>
       <div className="progress">
-        <i style={{ width: `${((step + 1) / 7) * 100}%` }} />
+        <i style={{ width: `${((step + 1) / totalSteps) * 100}%` }} />
       </div>
       {step === 0 && (
         <>
@@ -243,53 +247,27 @@ function Wizard({
       )}
       {step === 4 && (
         <>
-          <h1>
-            ふだんの営業日が
-            <br />
-            祝日なら？
-          </h1>
-          <p>例：ふだん営業する火曜日が、祝日だった場合について選びます。</p>
+          <h1>祝日はどのように営業しますか？</h1>
+          <p>祝日といつもの営業日・定休日が重なったときの扱いです。</p>
           <Choice
-            selected={calendar.rules.holidays}
+            selected={holidayPolicy}
             options={[
-              ["open", "祝日も営業する"],
+              ["usual", "いつもの曜日どおり"],
+              ["open", "祝日は営業する"],
               ["closed", "祝日はお休みする"],
             ]}
-            onChange={(v) =>
-              update(
-                updateRules(calendar, { holidays: v as "open" | "closed" }),
-              )
+            descriptions={{
+              usual: "営業日なら営業し、定休日ならお休みします。",
+              open: "定休日と重なっても、祝日は営業します。",
+              closed: "営業日と重なっても、祝日はお休みします。",
+            }}
+            onChange={(value) =>
+              update(updateHolidayPolicy(calendar, value as HolidayPolicy))
             }
           />
         </>
       )}
-      {step === 5 && (
-        <>
-          <h1>
-            いつもの定休日が
-            <br />
-            祝日なら？
-          </h1>
-          <p>
-            例：毎週月曜日がお休みで、その月曜日が祝日だった場合について選びます。
-          </p>
-          <Choice
-            selected={calendar.rules.regularClosureOnHoliday}
-            options={[
-              ["open", "祝日だけ特別に営業する"],
-              ["closed", "定休日どおりお休みする"],
-            ]}
-            onChange={(v) =>
-              update(
-                updateRules(calendar, {
-                  regularClosureOnHoliday: v as "open" | "closed",
-                }),
-              )
-            }
-          />
-        </>
-      )}
-      {step === 6 && (
+      {step === 5 && holidayPolicy === "open" && (
         <>
           <h1>
             特別営業したあとの
@@ -419,10 +397,12 @@ function ScheduleQuestion({
 function Choice({
   selected,
   options,
+  descriptions,
   onChange,
 }: {
   selected: string;
   options: readonly (readonly [string, string])[];
+  descriptions?: Readonly<Record<string, string>>;
   onChange: (v: string) => void;
 }) {
   return (
@@ -434,11 +414,28 @@ function Choice({
           onClick={() => onChange(value)}
         >
           <span>{selected === value ? "●" : "○"}</span>
-          {label}
+          <span className="choice-copy">
+            <strong>{label}</strong>
+            {descriptions?.[value] && <small>{descriptions[value]}</small>}
+          </span>
         </button>
       ))}
     </div>
   );
+}
+type HolidayPolicy = "usual" | "open" | "closed";
+function getHolidayPolicy(calendar: StoreCalendar): HolidayPolicy {
+  if (calendar.rules.holidays === "closed") return "closed";
+  return calendar.rules.regularClosureOnHoliday === "open" ? "open" : "usual";
+}
+function updateHolidayPolicy(
+  calendar: StoreCalendar,
+  policy: HolidayPolicy,
+): StoreCalendar {
+  return updateRules(calendar, {
+    holidays: policy === "closed" ? "closed" : "open",
+    regularClosureOnHoliday: policy === "open" ? "open" : "closed",
+  });
 }
 function Settings({
   calendar,
@@ -555,7 +552,7 @@ const CalendarCard = forwardRef<
     days: readonly CalendarDay[];
     rangeStart: IsoDate | "";
     rangeEnd: IsoDate | "";
-    onDateSelect?: (date: IsoDate) => void;
+    onDateSelect?: ((date: IsoDate) => void) | undefined;
   }
 >(({ calendar, month, days, rangeStart, rangeEnd, onDateSelect }, ref) => (
   <div
@@ -680,7 +677,7 @@ function exportPng(
   c.font = "20px sans-serif";
   c.fillStyle = "#29251f";
   c.fillText(
-    `平日 ${formatBusinessHours(calendar.businessHours.weekday)}　土日祝 ${formatBusinessHours(calendar.businessHours.weekendHoliday)}`,
+    `平日 ${formatBusinessHours(calendar.businessHours.weekday)} / 土日祝 ${formatBusinessHours(calendar.businessHours.weekendHoliday)}`,
     540,
     1010,
   );

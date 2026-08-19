@@ -153,9 +153,23 @@ button.selected {
   padding: 18px;
   color: #433d36;
 }
-.choices span {
+.choices button > span:first-child {
   margin-right: 14px;
   color: #a05238;
+}
+.choices .choice-copy {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  vertical-align: middle;
+}
+.choices .choice-copy small {
+  color: #847a6e;
+  font-size: 10px;
+  font-weight: 400;
+}
+.choices button.selected .choice-copy small {
+  color: #fff9;
 }
 .time-row {
   display: grid;
