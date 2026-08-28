@@ -66,7 +66,8 @@ export function CalendarPage() {
     setExceptionStart("");
     setExceptionEnd("");
   };
-  const download = () => exportPng(calendar, month, days);
+  const download = () =>
+    void exportPng(exportRef.current, calendar, month, days);
   return (
     <main className={`app theme-${calendar.theme}`}>
       <header className="topbar">
@@ -656,63 +657,283 @@ const CalendarCard = forwardRef<
     </div>
   </div>
 ));
-function exportPng(
+const IMAGE_SIZE = 1080;
+const HOLIDAY_COLOR = "#c43d3d";
+const DEFAULT_BODY_FONT = '"Noto Sans JP", sans-serif';
+const DEFAULT_HEADING_FONT = '"Shippori Mincho", serif';
+
+export async function exportPng(
+  source: HTMLDivElement | null,
   calendar: StoreCalendar,
   month: Date,
   days: readonly CalendarDay[],
 ) {
+  const bodyFont = source
+    ? getComputedStyle(source).fontFamily
+    : DEFAULT_BODY_FONT;
+  const heading = source?.querySelector<HTMLElement>(".card-heading h2");
+  const headingFont = heading
+    ? getComputedStyle(heading).fontFamily
+    : DEFAULT_HEADING_FONT;
+  await loadCalendarFonts(bodyFont, headingFont);
+
   const canvas = document.createElement("canvas");
-  canvas.width = 1080;
-  canvas.height = 1080;
+  canvas.width = IMAGE_SIZE;
+  canvas.height = IMAGE_SIZE;
   const c = canvas.getContext("2d");
   if (!c) return;
-  c.fillStyle = "#fbf8f1";
-  c.fillRect(0, 0, 1080, 1080);
+
+  const background =
+    calendar.theme === "minimal"
+      ? "#ffffff"
+      : calendar.theme === "japanese"
+        ? "#f8f4eb"
+        : "#fbf8f1";
+  c.fillStyle = background;
+  c.fillRect(0, 0, IMAGE_SIZE, IMAGE_SIZE);
+  if (calendar.theme === "japanese") {
+    c.strokeStyle = "#3f4439";
+    c.lineWidth = 4;
+    c.strokeRect(10, 10, IMAGE_SIZE - 20, IMAGE_SIZE - 20);
+    c.lineWidth = 2;
+    c.strokeRect(20, 20, IMAGE_SIZE - 40, IMAGE_SIZE - 40);
+  }
+
   c.textAlign = "center";
+  c.textBaseline = "middle";
   c.fillStyle = calendar.mainColor;
-  c.font = "28px sans-serif";
-  c.fillText("BUSINESS CALENDAR", 540, 80);
+  c.font = `500 15px ${bodyFont}`;
+  drawSpacedText(c, "BUSINESS CALENDAR", IMAGE_SIZE / 2, 65, 4);
   c.fillStyle = "#29251f";
-  c.font = "bold 54px sans-serif";
-  c.fillText(calendar.storeName, 540, 150);
-  c.font = "32px sans-serif";
+  c.textAlign = "center";
+  setFittedFont(c, calendar.storeName, 58, 600, headingFont, 720);
+  c.fillText(calendar.storeName, IMAGE_SIZE / 2, 132);
+  c.textAlign = "right";
+  c.font = `400 21px ${bodyFont}`;
   c.fillText(
     `${month.getFullYear()} / ${String(month.getMonth() + 1).padStart(2, "0")}`,
-    540,
-    205,
+    1015,
+    190,
   );
+  c.strokeStyle = "#d8d1c5";
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(65, 218);
+  c.lineTo(1015, 218);
+  c.stroke();
+
+  const gridLeft = 65;
+  const gridRight = 1015;
+  const gridTop = 285;
+  const gridBottom = 850;
+  const columnWidth = (gridRight - gridLeft) / 7;
   const start = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
+  const rowCount = Math.ceil((start + days.length) / 7);
+  const rowHeight = (gridBottom - gridTop) / rowCount;
   WEEKDAYS.forEach((w, i) => {
-    c.font = "bold 22px sans-serif";
-    c.fillText(w, 145 + i * 132, 280);
+    c.textAlign = "center";
+    c.fillStyle = "#857b6e";
+    c.font = `600 18px ${bodyFont}`;
+    c.fillText(w, gridLeft + columnWidth * (i + 0.5), 252);
   });
+
   days.forEach((d) => {
     const cell = start + d.day - 1;
-    const x = 82 + (cell % 7) * 132;
-    const y = 310 + Math.floor(cell / 7) * 116;
-    c.fillStyle = d.isOpen ? "#fff" : `${calendar.mainColor}22`;
-    c.beginPath();
-    c.roundRect(x, y, 112, 96, 16);
-    c.fill();
-    c.fillStyle = d.isOpen ? "#29251f" : calendar.mainColor;
-    c.font = "bold 28px sans-serif";
-    c.fillText(String(d.day), x + 56, y + 42);
+    const column = cell % 7;
+    const row = Math.floor(cell / 7);
+    const x = gridLeft + column * columnWidth + 6;
+    const y = gridTop + row * rowHeight + 4;
+    const width = columnWidth - 12;
+    const height = rowHeight - 8;
     if (!d.isOpen) {
-      c.font = "18px sans-serif";
-      c.fillText("休", x + 56, y + 72);
+      c.fillStyle = mixWithWhite(calendar.mainColor, 0.12);
+      roundedRect(c, x, y, width, height, 16);
+      c.fill();
     }
+    if (d.kind === "special-open") {
+      c.strokeStyle = calendar.mainColor;
+      c.lineWidth = 3;
+      roundedRect(c, x, y, width, height, 16);
+      c.stroke();
+    }
+
+    const labels = [
+      ...(d.isHoliday && d.holidayName ? [d.holidayName] : []),
+      ...(!d.isOpen ? ["休"] : []),
+      ...(d.kind === "special-open" ? ["営"] : []),
+    ];
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    const dayY = labels.length === 0 ? centerY : centerY - 18;
+    c.textAlign = "center";
+    c.fillStyle = d.isHoliday
+      ? HOLIDAY_COLOR
+      : d.isOpen
+        ? "#29251f"
+        : calendar.mainColor;
+    c.font = `600 30px ${bodyFont}`;
+    c.fillText(String(d.day), centerX, dayY);
+    labels.forEach((label, index) => {
+      c.fillStyle =
+        d.isHoliday && index === 0 ? HOLIDAY_COLOR : calendar.mainColor;
+      setFittedFont(c, label, 14, 500, bodyFont, width - 10);
+      c.fillText(label, centerX, dayY + 25 + index * 18);
+    });
   });
-  c.font = "20px sans-serif";
-  c.fillStyle = "#29251f";
-  c.fillText(
-    `平日 ${formatBusinessHours(calendar.businessHours.weekday)} / 土日祝 ${formatBusinessHours(calendar.businessHours.weekendHoliday)}`,
-    540,
-    1010,
-  );
+
+  drawLegend(c, calendar.mainColor, bodyFont, 895);
+  c.strokeStyle = "#d8d1c5";
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(65, 930);
+  c.lineTo(1015, 930);
+  c.stroke();
+  c.textBaseline = "top";
+  c.textAlign = "left";
+  c.fillStyle = "#776f65";
+  const weekdayHours = `平日 ${formatBusinessHours(calendar.businessHours.weekday)}`;
+  const weekendHours = `土日祝 ${formatBusinessHours(calendar.businessHours.weekendHoliday)}`;
+  setFittedFont(c, weekdayHours, 16, 600, bodyFont, 480);
+  c.fillText(weekdayHours, 65, 960);
+  setFittedFont(c, weekendHours, 16, 600, bodyFont, 480);
+  c.fillText(weekendHours, 65, 990);
+  c.textAlign = "right";
+  c.font = `400 16px ${bodyFont}`;
+  drawRightAlignedLines(c, calendar.note, 1015, 960, 420, 24);
+
   const link = document.createElement("a");
   link.download = `business-calendar-${month.getFullYear()}-${month.getMonth() + 1}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
+}
+
+async function loadCalendarFonts(bodyFont: string, headingFont: string) {
+  if (document.fonts === undefined) return;
+  await Promise.allSettled([
+    document.fonts.load(`600 30px ${bodyFont}`),
+    document.fonts.load(`600 58px ${headingFont}`),
+  ]);
+  await document.fonts.ready;
+}
+
+function setFittedFont(
+  c: CanvasRenderingContext2D,
+  text: string,
+  initialSize: number,
+  weight: number,
+  family: string,
+  maxWidth: number,
+) {
+  let size = initialSize;
+  c.font = `${weight} ${size}px ${family}`;
+  while (size > 10 && c.measureText(text).width > maxWidth) {
+    size -= 1;
+    c.font = `${weight} ${size}px ${family}`;
+  }
+}
+
+function drawSpacedText(
+  c: CanvasRenderingContext2D,
+  text: string,
+  centerX: number,
+  y: number,
+  spacing: number,
+) {
+  const widths = [...text].map((character) => c.measureText(character).width);
+  const totalWidth =
+    widths.reduce((total, width) => total + width, 0) +
+    spacing * (widths.length - 1);
+  let x = centerX - totalWidth / 2;
+  c.textAlign = "left";
+  [...text].forEach((character, index) => {
+    c.fillText(character, x, y);
+    x += (widths[index] ?? 0) + spacing;
+  });
+}
+
+function roundedRect(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  c.beginPath();
+  c.roundRect(x, y, width, height, radius);
+}
+
+function mixWithWhite(color: string, ratio: number) {
+  const normalized = color.replace("#", "");
+  const expanded =
+    normalized.length === 3
+      ? [...normalized].map((value) => `${value}${value}`).join("")
+      : normalized;
+  const value = Number.parseInt(expanded, 16);
+  if (expanded.length !== 6 || Number.isNaN(value)) return "#f4ebe7";
+  const channel = (shift: number) =>
+    Math.round(255 + (((value >> shift) & 0xff) - 255) * ratio);
+  return `rgb(${channel(16)}, ${channel(8)}, ${channel(0)})`;
+}
+
+function drawLegend(
+  c: CanvasRenderingContext2D,
+  accent: string,
+  font: string,
+  y: number,
+) {
+  const items = [
+    { label: "営業日", fill: "#aaaaaa", stroke: "#aaaaaa" },
+    { label: "休業日", fill: accent, stroke: accent },
+    { label: "臨時変更", fill: "#ffffff", stroke: accent },
+  ];
+  c.font = `400 14px ${font}`;
+  const widths = items.map((item) => 16 + c.measureText(item.label).width);
+  const gap = 28;
+  const totalWidth =
+    widths.reduce((total, width) => total + width, 0) + gap * 2;
+  let x = (IMAGE_SIZE - totalWidth) / 2;
+  c.textAlign = "left";
+  c.textBaseline = "middle";
+  for (const [index, item] of items.entries()) {
+    c.beginPath();
+    c.arc(x + 5, y, 5, 0, Math.PI * 2);
+    c.fillStyle = item.fill;
+    c.fill();
+    c.strokeStyle = item.stroke;
+    c.lineWidth = 2;
+    c.stroke();
+    c.fillStyle = "#776f65";
+    c.fillText(item.label, x + 16, y);
+    x += (widths[index] ?? 0) + gap;
+  }
+}
+
+function drawRightAlignedLines(
+  c: CanvasRenderingContext2D,
+  text: string,
+  right: number,
+  top: number,
+  maxWidth: number,
+  lineHeight: number,
+) {
+  const lines: string[] = [];
+  let current = "";
+  for (const character of text) {
+    const candidate = `${current}${character}`;
+    if (current && c.measureText(candidate).width > maxWidth) {
+      lines.push(current);
+      current = character;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) lines.push(current);
+  lines
+    .slice(0, 3)
+    .forEach((line, index) =>
+      c.fillText(line, right, top + index * lineHeight),
+    );
 }
 function formatBusinessHours(hours: BusinessHours) {
   const base = `${hours.open}–${hours.close}`;
