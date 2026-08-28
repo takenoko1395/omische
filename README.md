@@ -91,6 +91,11 @@ Pull Requestを作成・更新・再オープンすると、GitHub ActionsがPro
 GitHub Pagesへ公開します。RepositoryのSettingsで、PagesのSourceを
 **GitHub Actions**に設定してください。
 
+canonical、OGPのURL、`robots.txt`、`sitemap.xml`には、GitHub PagesのURLが使用されます。
+独自ドメインを使う場合はRepository Variableの`SITE_URL`へ、末尾のパスを含む公開URLを
+設定してください。OG画像を用意したあとは、絶対URLまたはサイトルートからの相対パスを
+`OG_IMAGE_URL`へ設定すると、OGPとTwitter/Xの画像タグが有効になります。
+
 GitHub PagesはRepositoryにつき1サイトのため、新しいPull Requestのデプロイによって
 現在公開されている内容が置き換わります。また、ForkからのPull Requestでは書き込み
 権限が付与されないため、Pagesへのデプロイは実行できません。

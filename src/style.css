@@ -113,6 +113,14 @@ h1 {
   color: #847a6e;
   line-height: 1.8;
 }
+.store-name-field {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.static-introduction {
+  justify-content: center;
+}
 input,
 select {
   width: 100%;

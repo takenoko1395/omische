@@ -196,17 +196,20 @@ function Wizard({
       </div>
       {step === 0 && (
         <>
-          <h1>
-            お店のお名前を
-            <br />
-            教えてください
-          </h1>
-          <p>カレンダーのタイトルに表示します。</p>
-          <input
-            autoFocus
-            value={calendar.storeName}
-            onChange={(e) => update({ ...calendar, storeName: e.target.value })}
-          />
+          <h1>お店の営業日カレンダーを、かんたんに。</h1>
+          <p>
+            Omischeは、個人経営や小規模店舗向けの営業日カレンダー作成サービスです。定休日や第N曜日、祝日の営業・休業ルールから毎月の営業日と休業日を自動計算し、完成したカレンダーを画像として保存してInstagramなどSNSでの営業案内にも使えます。
+          </p>
+          <label className="store-name-field">
+            お店のお名前
+            <input
+              autoFocus
+              value={calendar.storeName}
+              onChange={(e) =>
+                update({ ...calendar, storeName: e.target.value })
+              }
+            />
+          </label>
         </>
       )}
       {step === 1 && (
