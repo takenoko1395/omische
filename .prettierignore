@@ -2,3 +2,4 @@ node_modules
 dist
 coverage
 package-lock.json
+src/gateway/browser-calendar/src/data/japanese-holidays.json

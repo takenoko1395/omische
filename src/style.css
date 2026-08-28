@@ -66,6 +66,18 @@ button {
   font-weight: 600;
   box-shadow: 0 5px 15px #98503833;
 }
+.export-action {
+  position: relative;
+}
+.export-error {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: max-content;
+  max-width: 280px;
+  color: #a33d32;
+  font-size: 10px;
+}
 .workspace {
   display: grid;
   grid-template-columns: minmax(340px, 42%) 1fr;
@@ -112,6 +124,14 @@ h1 {
 .wizard > p:not(.eyebrow) {
   color: #847a6e;
   line-height: 1.8;
+}
+.store-name-field {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.static-introduction {
+  justify-content: center;
 }
 input,
 select {
@@ -227,6 +247,10 @@ button.selected {
   border: 0;
   background: transparent;
   font-size: 28px;
+}
+.month-nav button:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
 }
 .preview-range-editor {
   width: min(680px, 100%);

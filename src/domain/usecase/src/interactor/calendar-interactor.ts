@@ -1,113 +1,91 @@
-import {
-  buildBusinessMonth,
-  defaultStoreCalendar,
-  type CalendarDay,
-  type StoreCalendar,
-} from "@omische/model";
+import type { CalendarDay, StoreCalendar } from "@omische/model";
 import type { CalendarGateway } from "../gateway/calendar-gateway";
-export type SubstituteClosureWarning = Readonly<{
-  date: string;
-  holidayNames: readonly string[];
-  message: string;
-}>;
+import type { CalendarImageGateway } from "../gateway/calendar-image-gateway";
+import { buildCalendarMonth } from "./calendar-interactor/build-calendar-month";
+import {
+  exportCalendarMonth,
+  type ExportCalendarMonthInput,
+} from "./calendar-interactor/export-calendar-month";
+import {
+  getHolidayDataRange,
+  type HolidayDataRange,
+} from "./calendar-interactor/get-holiday-data-range";
+import {
+  getSubstituteClosureWarnings,
+  type SubstituteClosureWarning,
+} from "./calendar-interactor/get-substitute-closure-warnings";
+import { hasHolidayData } from "./calendar-interactor/has-holiday-data";
+import { loadCalendar } from "./calendar-interactor/load-calendar";
+import { saveCalendar } from "./calendar-interactor/save-calendar";
+import { setExceptionRange } from "./calendar-interactor/set-exception-range";
+
+export type {
+  ExportCalendarMonthInput,
+  HolidayDataRange,
+  SubstituteClosureWarning,
+};
+
 export class CalendarInteractor {
-  public constructor(private readonly gateway: CalendarGateway) {}
+  public constructor(
+    private readonly calendarGateway: CalendarGateway,
+    private readonly imageGateway: CalendarImageGateway,
+  ) {}
+
+  /** 保存済み設定、または初期設定を取得します。 */
   public load(): StoreCalendar {
-    return this.gateway.load() ?? defaultStoreCalendar();
+    return loadCalendar(this.calendarGateway);
   }
+
+  /** 店舗カレンダー設定を保存します。 */
   public save(calendar: StoreCalendar): StoreCalendar {
-    this.gateway.save(calendar);
-    return calendar;
+    return saveCalendar(this.calendarGateway, calendar);
   }
+
+  /** 指定範囲を臨時営業日または臨時休業日として保存します。 */
   public setExceptionRange(
     calendar: StoreCalendar,
     kind: "open" | "closed",
     start: string,
     end: string,
   ): StoreCalendar {
-    const dates: string[] = [];
-    const current = new Date(`${start}T00:00:00`);
-    const last = new Date(`${end}T00:00:00`);
-    if (Number.isNaN(current.valueOf()) || current > last) return calendar;
-    while (current <= last) {
-      dates.push(
-        `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}-${String(current.getDate()).padStart(2, "0")}`,
-      );
-      current.setDate(current.getDate() + 1);
-    }
-    const selected = new Set(dates);
-    const rules = {
-      ...calendar.rules,
-      specialOpenDates:
-        kind === "open"
-          ? [...new Set([...calendar.rules.specialOpenDates, ...dates])]
-          : calendar.rules.specialOpenDates.filter(
-              (date) => !selected.has(date),
-            ),
-      specialClosedDates:
-        kind === "closed"
-          ? [...new Set([...calendar.rules.specialClosedDates, ...dates])]
-          : calendar.rules.specialClosedDates.filter(
-              (date) => !selected.has(date),
-            ),
-    } as StoreCalendar["rules"];
-    return this.save({ ...calendar, rules });
+    return setExceptionRange(this.calendarGateway, calendar, kind, start, end);
   }
+
+  /** 指定月の営業日と休業日を取得します。 */
   public month(
     calendar: StoreCalendar,
     year: number,
     month: number,
   ): readonly CalendarDay[] {
-    return buildBusinessMonth(
-      calendar,
-      year,
-      month,
-      this.gateway.holidays(year),
-    );
+    return buildCalendarMonth(this.calendarGateway, calendar, year, month);
   }
+
+  /** 祝日データの最古年と最新年を取得します。 */
+  public holidayDataRange(): HolidayDataRange | undefined {
+    return getHolidayDataRange(this.calendarGateway);
+  }
+
+  /** 指定年の祝日データが存在するか判定します。 */
+  public hasHolidayData(year: number): boolean {
+    return hasHolidayData(this.calendarGateway, year);
+  }
+
+  /** 祝日によって繰り延べられる振替休業を取得します。 */
   public substituteClosureWarnings(
     calendar: StoreCalendar,
     from: Date,
     monthsAhead = 11,
   ): readonly SubstituteClosureWarning[] {
-    if (calendar.rules.substituteClosure !== "next-day") return [];
-    const toIsoDate = (date: Date) =>
-      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    const startDate = toIsoDate(from);
-    const endMonth = new Date(
-      from.getFullYear(),
-      from.getMonth() + monthsAhead,
-      1,
+    return getSubstituteClosureWarnings(
+      this.calendarGateway,
+      calendar,
+      from,
+      monthsAhead,
     );
-    const endDay = Math.min(
-      from.getDate(),
-      new Date(endMonth.getFullYear(), endMonth.getMonth() + 1, 0).getDate(),
-    );
-    const endDate = toIsoDate(
-      new Date(endMonth.getFullYear(), endMonth.getMonth(), endDay),
-    );
-    const warnings: SubstituteClosureWarning[] = [];
-    for (let offset = 0; offset <= monthsAhead; offset += 1) {
-      const target = new Date(from.getFullYear(), from.getMonth() + offset, 1);
-      for (const day of this.month(
-        calendar,
-        target.getFullYear(),
-        target.getMonth() + 1,
-      )) {
-        if (
-          day.date >= startDate &&
-          day.date <= endDate &&
-          day.kind === "substitute-closed" &&
-          day.substitutionFor &&
-          day.deferredByHolidays?.length
-        )
-          warnings.push({
-            date: day.date,
-            holidayNames: day.deferredByHolidays,
-            message: `${day.substitutionFor}の振替休業は、翌日も${day.deferredByHolidays.join("、")}のため${day.date}へ移動します。`,
-          });
-      }
-    }
-    return warnings;
+  }
+
+  /** 指定月の営業日カレンダーをPNG画像として保存します。 */
+  public async exportMonth(input: ExportCalendarMonthInput): Promise<void> {
+    await exportCalendarMonth(this.calendarGateway, this.imageGateway, input);
   }
 }

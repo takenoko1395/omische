@@ -22,17 +22,19 @@ src/
 │  ├─ model/                 # Entity / Value Object Package
 │  └─ usecase/               # Interactor / Gateway interface Package
 ├─ gateway/
-│  └─ dummy-gateway/         # 開発・テスト用Gateway Package
+│  └─ browser-calendar/      # Browser保存・祝日・PNG出力Gateway Package
 ├─ presentation/             # React UI Package
 ├─ wire/                     # Composition Root
 └─ main.tsx                  # Vite entry
 
 presentation ──> usecase ──> model
-dummy-gateway ──> usecase ──> model
+browser-calendar ──> usecase ──> model
 ```
 
 PresentationはUsecaseの公開APIのみを呼び出し、UsecaseはDomain ModelとGateway
 interfaceだけに依存します。Gatewayは外部形式とDomain Modelの相互変換を担当します。
+PNG書き出しはPresentationから`CalendarInteractor`を呼び、Usecaseが対象月を判定したあと、
+Browser GatewayがCanvas描画と端末への保存を行います。
 
 ## 開始方法
 
@@ -90,6 +92,11 @@ Pull Request、および`main`または`master`へのPushでは`.github/workflow
 Pull Requestを作成・更新・再オープンすると、GitHub ActionsがProduction buildを作成し、
 GitHub Pagesへ公開します。RepositoryのSettingsで、PagesのSourceを
 **GitHub Actions**に設定してください。
+
+canonical、OGPのURL、`robots.txt`、`sitemap.xml`には、GitHub PagesのURLが使用されます。
+独自ドメインを使う場合はRepository Variableの`SITE_URL`へ、末尾のパスを含む公開URLを
+設定してください。OG画像を用意したあとは、絶対URLまたはサイトルートからの相対パスを
+`OG_IMAGE_URL`へ設定すると、OGPとTwitter/Xの画像タグが有効になります。
 
 GitHub PagesはRepositoryにつき1サイトのため、新しいPull Requestのデプロイによって
 現在公開されている内容が置き換わります。また、ForkからのPull Requestでは書き込み

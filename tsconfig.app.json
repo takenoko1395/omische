@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "composite": true,
     "jsx": "react-jsx",
     "rootDir": ".",
@@ -19,6 +20,7 @@
     "src/main.tsx",
     "src/vite-env.d.ts",
     "src/wire",
+    "scripts/seo-metadata.ts",
     "vite.config.ts"
   ]
 }
