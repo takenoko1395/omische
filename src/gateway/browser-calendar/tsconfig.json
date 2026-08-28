@@ -1,0 +1,15 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "resolveJsonModule": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/browser-calendar.tsbuildinfo"
+  },
+  "references": [
+    { "path": "../../domain/model" },
+    { "path": "../../domain/usecase" }
+  ],
+  "include": ["src", "src/**/*.json"]
+}
