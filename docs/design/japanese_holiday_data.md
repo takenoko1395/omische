@@ -2,95 +2,54 @@
 
 ## 目的
 
-日本の祝日はアプリ内の計算式で推測せず、内閣府が公開する祝日CSVを正として扱う。
-ただし、ブラウザから表示のたびにCSVを取得すると、外部サイトの障害、CORS、通信量、
-再現性に問題が生じる。そのため、CSVは開発・更新時に取得して検証し、アプリが利用しやすい
-形式へ変換したうえでProduction buildへ静的に埋め込む。
+日本の祝日はアプリ内の計算式で推測せず、Repository内の内閣府祝日CSVを正として扱う。
+ブラウザ実行時には外部APIへアクセスせず、同じコミットから常に同じ結果を得られるようにする。
 
-## データソース
-
-- 提供元: 内閣府「国民の祝日について」
-- CSV: `https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv`
-
-取得元URLとCSV形式は変更される可能性があるため、実装時には内閣府の案内ページで
-最新の提供方法を確認する。
-
-## 採用する構成
+## データフロー
 
 ```text
-内閣府の祝日CSV
-  ↓ scripts/update-japanese-holidays.mjs が明示的に取得
-文字コード変換・形式検証・正規化
+resources/syukujitsu.csv（CP932）
+  ↓ npm run generate:holidays
+文字コード変換・形式検証・日付正規化
   ↓
-src/gateway/browser-calendar/data/japanese-holidays.json
+src/gateway/browser-calendar/src/data/japanese-holidays.json
   ↓ ViteのProduction buildへ同梱
 BrowserCalendarGatewayがDomain形式へ変換
 ```
 
-ブラウザのRuntimeでは外部サイトへアクセスしない。生成済みJSONだけを読み込むため、
-オフラインや内閣府サイトの一時的な障害に影響されず、同じコミットからは常に同じ祝日が
-得られる。
+`npm run build`は最初に生成処理を実行する。通常のアプリビルドとブラウザRuntimeは
+ネットワーク通信を行わない。
 
-## 更新処理
+## 生成処理
 
-更新スクリプトは次の処理を行う。
+生成スクリプトは次の処理を行う。
 
-1. HTTPSでCSVを取得する。
-2. 文字コードとヘッダーを確認する。
+1. Repository内のCSVをCP932として読み込む。
+2. ヘッダーと列数を確認する。
 3. 各行の日付と祝日名を読み取る。
 4. 日付を`YYYY-MM-DD`へ正規化する。
-5. 不正な日付、空の名称、日付の重複、想定外の列を検出したら失敗する。
-6. 日付順に並べたJSONを一時ファイルへ出力する。
-7. 検証がすべて成功した場合だけ既存JSONを置き換える。
+5. 不正な日付、空の名称、日付の重複を検出したら失敗する。
+6. 日付順の祝日と、CSVに存在する対応年をJSONへ出力する。
 
-ネットワークエラーやCSVの仕様変更が起きたときは、既存の生成済みデータを削除したり
-空ファイルで上書きしたりしてはならない。
-
-## 更新タイミング
-
-- 月1回程度、GitHub Actionsから更新スクリプトを実行する。
-- 生成結果に差分がある場合だけPull Requestを作成する。
-- 法改正や特例の祝日が発表された場合は、同じスクリプトを手動実行できるようにする。
-- 通常のアプリビルドではネットワーク取得を行わず、Repository内のJSONを使用する。
-
-毎回のビルドでCSVを取得しないことで、外部サービスの状態に左右されない再現可能な
-ビルドを維持する。
+CSVを更新した場合は`npm run generate:holidays`を実行する。`npm run check`はCSVと
+生成済みJSONが一致することも検査するため、生成漏れを検出できる。
 
 ## GatewayとDomainの責務
 
-- 更新スクリプトは、CSVという外部形式を安定したJSONへ変換する。
+- 生成スクリプトは、CSVという外部形式を安定したJSONへ変換する。
 - `BrowserCalendarGateway`は、生成済みJSONを`ReadonlyMap<IsoDate, string>`へ変換する。
-- UsecaseとDomain Modelは、CSVの列、文字コード、取得URLに依存しない。
-- Presentationは、Usecaseが返した祝日情報だけを表示する。
+- GatewayはCSVに存在する対応年もUsecaseへ提供する。
+- UsecaseとDomain Modelは、CSVの列や文字コードに依存しない。
+- PresentationはUsecaseの公開APIから対応年を取得し、範囲外へ移動させない。
 
-これにより、外部データ形式の変更をGateway側へ閉じ込める。
-
-## 対応年が存在しない場合
-
-生成済みデータに対象年がない場合、Productionで計算式へ無言でフォールバックしない。
-推測した日付を正式な祝日として表示することを避けるため、Gatewayはその年の祝日を
-空として返し、UIまたは運用監視で「祝日データ未収録」を検知できるようにする。
-
-必要であれば、現在の計算処理はCSVとの差分を検出する開発用テストとして一時的に残せるが、
-画面表示の正データとしては使用しない。
+生成済みデータに対象年がない場合、Gatewayはその年の祝日を空として返し、計算式へ
+フォールバックしない。
 
 ## テスト方針
 
-- CSV parserが正常な行を正規化できる。
-- 不正な日付、重複、空の名称、ヘッダー変更を拒否する。
-- 春分の日、秋分の日、振替休日、国民の休日を含む代表年をJSONから取得できる。
-- 特例で祝日が移動した年を計算式ではなくJSONどおりに返す。
-- ネットワーク取得失敗時に既存JSONが維持される。
-- Production build中に外部通信が発生しない。
-
-## 別Pull Requestで行う作業
-
-この方針の実装は、営業時間やカレンダーUIの変更とは分離したPull Requestで行う。
-
-- CSV取得・検証・JSON生成スクリプトの追加
-- 生成済み祝日JSONの追加
-- `BrowserCalendarGateway`をJSON参照へ変更
-- ローカル祝日計算をProduction経路から削除
-- parser、Gateway、代表年のテスト追加
-- 任意で月次更新用GitHub Actionsを追加
-- 更新手順をREADMEへ追記
+- CP932のCSVと日本語祝日名を読み取れる。
+- `YYYY/M/D`を`YYYY-MM-DD`へ正規化できる。
+- 不正なヘッダー、日付、重複、空の名称を拒否する。
+- CSVに含まれる年だけを対応年として扱う。
+- CSV由来の祝日を既存の祝日営業・祝日休業ルールへ渡せる。
+- Production build中とブラウザRuntimeに外部通信を必要としない。

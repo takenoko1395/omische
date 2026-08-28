@@ -228,6 +228,10 @@ button.selected {
   background: transparent;
   font-size: 28px;
 }
+.month-nav button:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
 .preview-range-editor {
   width: min(680px, 100%);
   min-height: 66px;

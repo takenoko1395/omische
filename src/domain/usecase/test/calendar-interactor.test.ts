@@ -21,7 +21,24 @@ class MemoryGateway implements CalendarGateway {
   public holidays(year: number) {
     return year === 2026 ? this.holidayData : new Map<IsoDate, string>();
   }
+  public supportedHolidayYears() {
+    return [2026, 2027];
+  }
 }
+
+describe("CalendarInteractorの祝日対応年", () => {
+  it("最古・最新の年と指定年の対応有無を返す", () => {
+    const interactor = new CalendarInteractor(new MemoryGateway());
+
+    expect(interactor.holidayDataRange()).toEqual({
+      oldestYear: 2026,
+      newestYear: 2027,
+    });
+    expect(interactor.hasHolidayData(2026)).toBe(true);
+    expect(interactor.hasHolidayData(2027)).toBe(true);
+    expect(interactor.hasHolidayData(2028)).toBe(false);
+  });
+});
 
 describe("CalendarInteractor.setExceptionRange", () => {
   it("範囲内の全日を追加し、反対の個別指定を解除する", () => {

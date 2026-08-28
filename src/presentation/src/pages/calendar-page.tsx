@@ -16,9 +16,16 @@ const updateRules = (
 ): StoreCalendar => ({ ...calendar, rules: { ...calendar.rules, ...changes } });
 export function CalendarPage() {
   const { calendar, update, interactor, setExceptionRange } = useCalendar();
-  const [month, setMonth] = useState(
-    new Date(now.getFullYear(), now.getMonth(), 1),
-  );
+  const holidayDataRange = interactor.holidayDataRange();
+  const [month, setMonth] = useState(() => {
+    if (holidayDataRange === undefined)
+      return new Date(now.getFullYear(), now.getMonth(), 1);
+    if (now.getFullYear() < holidayDataRange.oldestYear)
+      return new Date(holidayDataRange.oldestYear, 0, 1);
+    if (now.getFullYear() > holidayDataRange.newestYear)
+      return new Date(holidayDataRange.newestYear, 11, 1);
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [wizard, setWizard] = useState(true);
   const [step, setStep] = useState(0);
   const [exceptionStart, setExceptionStart] = useState<IsoDate | "">("");
@@ -32,8 +39,14 @@ export function CalendarPage() {
     () => interactor.substituteClosureWarnings(calendar, now),
     [calendar, interactor],
   );
-  const moveMonth = (offset: number) =>
+  const canMoveMonth = (offset: number) => {
+    const target = new Date(month.getFullYear(), month.getMonth() + offset, 1);
+    return interactor.hasHolidayData(target.getFullYear());
+  };
+  const moveMonth = (offset: number) => {
+    if (!canMoveMonth(offset)) return;
     setMonth(new Date(month.getFullYear(), month.getMonth() + offset, 1));
+  };
   const selectExceptionDate = (date: IsoDate) => {
     if (!exceptionStart || exceptionEnd) {
       setExceptionStart(date);
@@ -94,11 +107,23 @@ export function CalendarPage() {
         </aside>
         <section className="preview">
           <div className="month-nav">
-            <button onClick={() => moveMonth(-1)}>‹</button>
+            <button
+              disabled={!canMoveMonth(-1)}
+              aria-label="前の月"
+              onClick={() => moveMonth(-1)}
+            >
+              ‹
+            </button>
             <span>
               {month.getFullYear()}年 {month.getMonth() + 1}月
             </span>
-            <button onClick={() => moveMonth(1)}>›</button>
+            <button
+              disabled={!canMoveMonth(1)}
+              aria-label="次の月"
+              onClick={() => moveMonth(1)}
+            >
+              ›
+            </button>
           </div>
           {!wizard && (
             <div className="preview-range-editor" aria-live="polite">

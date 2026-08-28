@@ -10,6 +10,10 @@ export type SubstituteClosureWarning = Readonly<{
   holidayNames: readonly string[];
   message: string;
 }>;
+export type HolidayDataRange = Readonly<{
+  oldestYear: number;
+  newestYear: number;
+}>;
 export class CalendarInteractor {
   public constructor(private readonly gateway: CalendarGateway) {}
   public load(): StoreCalendar {
@@ -64,6 +68,17 @@ export class CalendarInteractor {
       month,
       this.gateway.holidays(year),
     );
+  }
+  public holidayDataRange(): HolidayDataRange | undefined {
+    const years = this.gateway.supportedHolidayYears();
+    if (years.length === 0) return undefined;
+    return {
+      oldestYear: Math.min(...years),
+      newestYear: Math.max(...years),
+    };
+  }
+  public hasHolidayData(year: number): boolean {
+    return this.gateway.supportedHolidayYears().includes(year);
   }
   public substituteClosureWarnings(
     calendar: StoreCalendar,
