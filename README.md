@@ -22,17 +22,19 @@ src/
 │  ├─ model/                 # Entity / Value Object Package
 │  └─ usecase/               # Interactor / Gateway interface Package
 ├─ gateway/
-│  └─ dummy-gateway/         # 開発・テスト用Gateway Package
+│  └─ browser-calendar/      # Browser保存・祝日・PNG出力Gateway Package
 ├─ presentation/             # React UI Package
 ├─ wire/                     # Composition Root
 └─ main.tsx                  # Vite entry
 
 presentation ──> usecase ──> model
-dummy-gateway ──> usecase ──> model
+browser-calendar ──> usecase ──> model
 ```
 
 PresentationはUsecaseの公開APIのみを呼び出し、UsecaseはDomain ModelとGateway
 interfaceだけに依存します。Gatewayは外部形式とDomain Modelの相互変換を担当します。
+PNG書き出しはPresentationから`CalendarInteractor`を呼び、Usecaseが対象月を判定したあと、
+Browser GatewayがCanvas描画と端末への保存を行います。
 
 ## 開始方法
 

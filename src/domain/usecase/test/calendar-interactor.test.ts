@@ -4,7 +4,12 @@ import {
   type IsoDate,
   type StoreCalendar,
 } from "@omische/model";
-import { CalendarInteractor, type CalendarGateway } from "../src";
+import {
+  CalendarInteractor,
+  type CalendarGateway,
+  type CalendarImage,
+  type CalendarImageGateway,
+} from "../src";
 
 class MemoryGateway implements CalendarGateway {
   public saved?: StoreCalendar;
@@ -26,9 +31,21 @@ class MemoryGateway implements CalendarGateway {
   }
 }
 
+class MemoryImageGateway implements CalendarImageGateway {
+  public downloaded?: CalendarImage;
+  public async downloadPng(image: CalendarImage) {
+    this.downloaded = image;
+  }
+}
+
+const buildInteractor = (
+  calendarGateway: CalendarGateway = new MemoryGateway(),
+  imageGateway: CalendarImageGateway = new MemoryImageGateway(),
+) => new CalendarInteractor(calendarGateway, imageGateway);
+
 describe("CalendarInteractorの祝日対応年", () => {
   it("最古・最新の年と指定年の対応有無を返す", () => {
-    const interactor = new CalendarInteractor(new MemoryGateway());
+    const interactor = buildInteractor();
 
     expect(interactor.holidayDataRange()).toEqual({
       oldestYear: 2026,
@@ -43,7 +60,7 @@ describe("CalendarInteractorの祝日対応年", () => {
 describe("CalendarInteractor.setExceptionRange", () => {
   it("範囲内の全日を追加し、反対の個別指定を解除する", () => {
     const gateway = new MemoryGateway();
-    const interactor = new CalendarInteractor(gateway);
+    const interactor = buildInteractor(gateway);
     const base = defaultStoreCalendar();
     const calendar = {
       ...base,
@@ -69,7 +86,7 @@ describe("CalendarInteractor.setExceptionRange", () => {
 
 describe("CalendarInteractor.substituteClosureWarnings", () => {
   it("自動振替休業が祝日と重なる日を11カ月後まで通知する", () => {
-    const interactor = new CalendarInteractor(new MemoryGateway());
+    const interactor = buildInteractor();
     const base = defaultStoreCalendar();
     const calendar = {
       ...base,
@@ -91,7 +108,7 @@ describe("CalendarInteractor.substituteClosureWarnings", () => {
   });
 
   it("手動で休業期間を決める場合は通知しない", () => {
-    const interactor = new CalendarInteractor(new MemoryGateway());
+    const interactor = buildInteractor();
 
     expect(
       interactor.substituteClosureWarnings(
@@ -106,7 +123,7 @@ describe("CalendarInteractor.substituteClosureWarnings", () => {
     gateway.holidayData = new Map<IsoDate, string>([
       ["2026-09-21", "敬老の日"],
     ]);
-    const interactor = new CalendarInteractor(gateway);
+    const interactor = buildInteractor(gateway);
     const base = defaultStoreCalendar();
     const calendar = {
       ...base,
@@ -119,7 +136,7 @@ describe("CalendarInteractor.substituteClosureWarnings", () => {
   });
 
   it("探索開始日より前にある競合は通知しない", () => {
-    const interactor = new CalendarInteractor(new MemoryGateway());
+    const interactor = buildInteractor();
     const base = defaultStoreCalendar();
     const calendar = {
       ...base,
@@ -129,5 +146,41 @@ describe("CalendarInteractor.substituteClosureWarnings", () => {
     expect(
       interactor.substituteClosureWarnings(calendar, new Date(2026, 9, 1)),
     ).toEqual([]);
+  });
+});
+
+describe("CalendarInteractor.exportMonth", () => {
+  it("祝日判定済みの月を画像Gatewayへ渡す", async () => {
+    const imageGateway = new MemoryImageGateway();
+    const interactor = buildInteractor(new MemoryGateway(), imageGateway);
+
+    await interactor.exportMonth({
+      calendar: defaultStoreCalendar(),
+      year: 2026,
+      month: 9,
+    });
+
+    expect(imageGateway.downloaded).toMatchObject({ year: 2026, month: 9 });
+    expect(imageGateway.downloaded?.days[20]).toMatchObject({
+      date: "2026-09-21",
+      holidayName: "敬老の日",
+    });
+  });
+
+  it("画像Gatewayの失敗を呼び出し元へ伝える", async () => {
+    const imageGateway: CalendarImageGateway = {
+      downloadPng: async () => {
+        throw new Error("画像を保存できませんでした。");
+      },
+    };
+    const interactor = buildInteractor(new MemoryGateway(), imageGateway);
+
+    await expect(
+      interactor.exportMonth({
+        calendar: defaultStoreCalendar(),
+        year: 2026,
+        month: 9,
+      }),
+    ).rejects.toThrow("画像を保存できませんでした。");
   });
 });

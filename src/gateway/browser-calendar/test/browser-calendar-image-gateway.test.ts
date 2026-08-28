@@ -4,11 +4,11 @@ import {
   defaultStoreCalendar,
   type IsoDate,
 } from "@omische/model";
-import { exportPng } from "../src/pages/calendar-page";
+import { BrowserCalendarImageGateway } from "../src";
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("exportPng", () => {
+describe("BrowserCalendarImageGateway.downloadPng", () => {
   it("画面と同じ祝日名をPNGへ描画する", async () => {
     let storeNameAlignment: CanvasTextAlign | undefined;
     const fillText = vi.fn((text: string) => {
@@ -52,7 +52,12 @@ describe("exportPng", () => {
       new Map<IsoDate, string>([["2026-01-01", "元日"]]),
     );
 
-    await exportPng(null, calendar, new Date(2026, 0, 1), days);
+    await new BrowserCalendarImageGateway().downloadPng({
+      calendar,
+      year: 2026,
+      month: 1,
+      days,
+    });
 
     expect(fillText).toHaveBeenCalledWith(
       "元日",
